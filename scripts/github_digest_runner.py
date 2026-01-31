@@ -4,8 +4,8 @@ GitHub Actions Digest Runner
 Khabri - News Intelligence System
 
 This script is called by GitHub Actions to:
-1. Scrape news from sources
-2. Process articles through pipeline
+1. Scrape news from RSS feeds
+2. Process articles
 3. Send notifications via Telegram/Email
 
 Usage:
@@ -20,15 +20,13 @@ import sys
 import json
 import asyncio
 import logging
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.scrapers import NewsScraper, RSSReader, CompetitorTracker
-from src.processors import ProcessorPipeline
-from src.notifiers import TelegramNotifier, EmailNotifier
+# We'll use feedparser directly (it's a simple dependency)
+import feedparser
+import aiohttp
 
 # Configure logging
 logging.basicConfig(
@@ -42,13 +40,11 @@ ARTICLES_FILE = '/tmp/khabri_articles.json'
 PROCESSED_FILE = '/tmp/khabri_processed.json'
 
 
-async def scrape_news():
-    """Scrape news from all sources"""
+def scrape_rss_feeds():
+    """Scrape news from RSS feeds using feedparser directly"""
     logger.info("Starting news scraping...")
 
-    all_articles = []
-
-    # RSS feeds (most reliable for GitHub Actions)
+    # RSS feeds to scrape
     rss_feeds = [
         {
             'name': 'Google News - Real Estate',
@@ -64,25 +60,53 @@ async def scrape_news():
         },
         {
             'name': 'Google News - RERA',
-            'url': 'https://news.google.com/rss/search?q=RERA+india&hl=en-IN&gl=IN&ceid=IN:en'
+            'url': 'https://news.google.com/rss/search?q=RERA+real+estate&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
             'name': 'Google News - Mumbai Property',
             'url': 'https://news.google.com/rss/search?q=mumbai+property&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Google News - Home Loan',
+            'url': 'https://news.google.com/rss/search?q=india+home+loan+interest+rate&hl=en-IN&gl=IN&ceid=IN:en'
         }
     ]
 
-    rss_reader = RSSReader()
+    all_articles = []
 
-    for feed in rss_feeds:
+    for feed_config in rss_feeds:
         try:
-            articles = await rss_reader.fetch_feed(feed['url'])
-            for article in articles:
-                article['source'] = feed['name']
-            all_articles.extend(articles)
-            logger.info(f"  {feed['name']}: {len(articles)} articles")
+            logger.info(f"  Fetching: {feed_config['name']}...")
+            feed = feedparser.parse(feed_config['url'])
+
+            for entry in feed.entries[:10]:  # Limit to 10 per feed
+                # Generate unique ID
+                article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
+
+                # Parse date
+                published_at = datetime.now().isoformat()
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    try:
+                        published_at = datetime(*entry.published_parsed[:6]).isoformat()
+                    except:
+                        pass
+
+                article = {
+                    'id': article_id,
+                    'title': entry.get('title', 'No title'),
+                    'url': entry.get('link', ''),
+                    'source': feed_config['name'],
+                    'content': entry.get('summary', entry.get('description', '')),
+                    'published_at': published_at,
+                    'scraped_at': datetime.now().isoformat(),
+                    'category': 'general'
+                }
+                all_articles.append(article)
+
+            logger.info(f"    Got {min(10, len(feed.entries))} articles")
+
         except Exception as e:
-            logger.error(f"  {feed['name']}: Failed - {e}")
+            logger.error(f"  {feed_config['name']}: Failed - {e}")
 
     logger.info(f"Total scraped: {len(all_articles)} articles")
 
@@ -93,34 +117,55 @@ async def scrape_news():
     return all_articles
 
 
-async def process_articles():
-    """Process scraped articles through pipeline"""
+def process_articles():
+    """Process and deduplicate articles"""
     logger.info("Processing articles...")
 
     # Load scraped articles
     if not os.path.exists(ARTICLES_FILE):
-        logger.error("No articles file found. Run scrape first.")
-        return []
+        logger.warning("No articles file found. Creating empty.")
+        all_articles = []
+    else:
+        with open(ARTICLES_FILE, 'r') as f:
+            all_articles = json.load(f)
 
-    with open(ARTICLES_FILE, 'r') as f:
-        articles = json.load(f)
-
-    if not articles:
+    if not all_articles:
         logger.warning("No articles to process")
+        # Save empty list
+        with open(PROCESSED_FILE, 'w') as f:
+            json.dump([], f)
         return []
 
-    # Initialize pipeline
-    pipeline = ProcessorPipeline(
-        enable_deduplication=True,
-        enable_categorization=True,
-        enable_summarization=True,
-        enable_celebrity_matching=True
-    )
+    # Simple deduplication by title similarity
+    seen_titles = set()
+    processed = []
 
-    # Process articles
-    processed = pipeline.process(articles)
+    for article in all_articles:
+        # Normalize title for comparison
+        title_key = article.get('title', '').lower()[:50]
 
-    logger.info(f"Processed: {len(processed)} articles (from {len(articles)})")
+        if title_key not in seen_titles:
+            seen_titles.add(title_key)
+
+            # Simple categorization based on keywords
+            title_lower = article.get('title', '').lower()
+            content_lower = article.get('content', '').lower()
+            text = title_lower + ' ' + content_lower
+
+            if any(kw in text for kw in ['rera', 'regulation', 'policy', 'government']):
+                article['category'] = 'policy'
+            elif any(kw in text for kw in ['price', 'rate', 'market', 'demand', 'sales']):
+                article['category'] = 'market_updates'
+            elif any(kw in text for kw in ['metro', 'infrastructure', 'airport', 'highway']):
+                article['category'] = 'infrastructure'
+            elif any(kw in text for kw in ['launch', 'new project', 'upcoming']):
+                article['category'] = 'launches'
+            elif any(kw in text for kw in ['loan', 'emi', 'interest', 'rbi']):
+                article['category'] = 'finance'
+
+            processed.append(article)
+
+    logger.info(f"Processed: {len(processed)} unique articles (from {len(all_articles)})")
 
     # Save processed articles
     with open(PROCESSED_FILE, 'w') as f:
@@ -144,40 +189,45 @@ async def send_telegram():
 
     # Load processed articles
     if not os.path.exists(PROCESSED_FILE):
-        logger.error("No processed articles. Run process first.")
-        sys.exit(1)
-
-    with open(PROCESSED_FILE, 'r') as f:
-        articles = json.load(f)
-
-    if not articles:
-        logger.warning("No articles to send")
-        # Send empty digest notification
+        logger.warning("No processed articles file. Sending empty digest.")
         articles = []
+    else:
+        with open(PROCESSED_FILE, 'r') as f:
+            articles = json.load(f)
 
     # Format message
-    message = format_digest_message(articles, digest_type)
+    message = format_telegram_message(articles, digest_type)
 
-    # Send via Telegram
-    notifier = TelegramNotifier(
-        bot_token=bot_token,
-        default_chat_id=chat_id
-    )
+    # Send via Telegram API
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    await notifier.send_message(message)
-    logger.info(f"Telegram digest sent! ({len(articles)} articles)")
+    async with aiohttp.ClientSession() as session:
+        payload = {
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'HTML',
+            'disable_web_page_preview': True
+        }
+
+        async with session.post(url, json=payload) as response:
+            if response.status == 200:
+                logger.info(f"Telegram digest sent! ({len(articles)} articles)")
+            else:
+                error = await response.text()
+                logger.error(f"Telegram send failed: {error}")
+                sys.exit(1)
 
 
 async def send_email():
     """Send digest via Email"""
     logger.info("Sending Email notification...")
 
-    # Get credentials from environment (matching your .env variable names)
+    # Get credentials from environment
     smtp_host = os.getenv('EMAIL_SMTP_HOST', 'smtp.gmail.com')
     smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
     username = os.getenv('EMAIL_USERNAME')
     password = os.getenv('EMAIL_PASSWORD')
-    sender = os.getenv('EMAIL_FROM')
+    sender = os.getenv('EMAIL_FROM', username)
     recipient = os.getenv('EMAIL_TO')
     digest_type = os.getenv('DIGEST_TYPE', 'morning')
 
@@ -187,62 +237,65 @@ async def send_email():
 
     # Load processed articles
     if not os.path.exists(PROCESSED_FILE):
-        logger.error("No processed articles. Run process first.")
+        logger.warning("No processed articles. Sending empty digest.")
+        articles = []
+    else:
+        with open(PROCESSED_FILE, 'r') as f:
+            articles = json.load(f)
+
+    # Format email
+    subject = f"Khabri {digest_type.title()} Digest - {datetime.now().strftime('%B %d, %Y')}"
+    body = format_email_message(articles, digest_type)
+
+    # Send via SMTP
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = recipient
+
+    html_part = MIMEText(body, 'html')
+    msg.attach(html_part)
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(username, password)
+            server.sendmail(sender, [recipient], msg.as_string())
+
+        logger.info(f"Email digest sent to {recipient}!")
+
+    except Exception as e:
+        logger.error(f"Email send failed: {e}")
         sys.exit(1)
 
-    with open(PROCESSED_FILE, 'r') as f:
-        articles = json.load(f)
 
-    # Format message
-    message = format_digest_message(articles, digest_type, html=True)
-    subject = f"Khabri {digest_type.title()} Digest - {datetime.now().strftime('%B %d, %Y')}"
-
-    # Send via Email
-    notifier = EmailNotifier(
-        smtp_host=smtp_host,
-        smtp_port=smtp_port,
-        username=username,
-        password=password,
-        sender_email=sender or username,
-        default_recipients=[recipient]
-    )
-
-    await notifier.send_email(subject=subject, body=message, html=True)
-    logger.info(f"Email digest sent to {recipient}!")
-
-
-def format_digest_message(articles, digest_type, html=False):
-    """Format articles into a digest message"""
+def format_telegram_message(articles, digest_type):
+    """Format articles for Telegram"""
     now = datetime.now()
     date_str = now.strftime('%B %d, %Y')
     time_str = now.strftime('%I:%M %p')
 
-    if html:
-        return format_html_digest(articles, digest_type, date_str)
-    else:
-        return format_text_digest(articles, digest_type, date_str, time_str)
-
-
-def format_text_digest(articles, digest_type, date_str, time_str):
-    """Format as plain text (for Telegram)"""
     header = "🌅 Morning" if digest_type == "morning" else "🌆 Evening"
 
     lines = [
-        f"{header} News Digest",
+        f"<b>{header} News Digest</b>",
         f"📅 {date_str} | ⏰ {time_str}",
         f"📊 {len(articles)} articles",
         "",
-        "━" * 30,
+        "━━━━━━━━━━━━━━━━━━━━"
     ]
 
     if not articles:
         lines.append("")
         lines.append("No new articles found today.")
-        lines.append("")
     else:
         # Group by category
         categories = {}
-        for article in articles[:15]:  # Limit to 15
+        for article in articles[:15]:
             cat = article.get('category', 'general')
             if cat not in categories:
                 categories[cat] = []
@@ -250,53 +303,62 @@ def format_text_digest(articles, digest_type, date_str, time_str):
 
         for category, cat_articles in categories.items():
             lines.append("")
-            lines.append(f"📁 {category.upper().replace('_', ' ')}")
+            lines.append(f"📁 <b>{category.upper().replace('_', ' ')}</b>")
 
-            for article in cat_articles[:5]:
-                title = article.get('title', 'No title')[:80]
-                source = article.get('source', 'Unknown')
-                url = article.get('url', article.get('link', ''))
+            for article in cat_articles[:4]:
+                title = article.get('title', 'No title')[:70]
+                url = article.get('url', '')
+                source = article.get('source', 'Unknown').replace('Google News - ', '')
 
                 lines.append(f"")
-                lines.append(f"• {title}")
-                lines.append(f"  📰 {source}")
                 if url:
-                    lines.append(f"  🔗 {url}")
+                    lines.append(f"• <a href='{url}'>{title}</a>")
+                else:
+                    lines.append(f"• {title}")
+                lines.append(f"  📰 {source}")
 
     lines.append("")
-    lines.append("━" * 30)
-    lines.append("🤖 Powered by Khabri News Intelligence")
-    lines.append("⚡ Auto-delivered via GitHub Actions")
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    lines.append("🤖 <i>Powered by Khabri</i>")
+    lines.append("⚡ <i>Auto-delivered via GitHub Actions</i>")
 
     return "\n".join(lines)
 
 
-def format_html_digest(articles, digest_type, date_str):
-    """Format as HTML (for Email)"""
+def format_email_message(articles, digest_type):
+    """Format articles as HTML email"""
+    now = datetime.now()
+    date_str = now.strftime('%B %d, %Y')
+
     header = "🌅 Morning" if digest_type == "morning" else "🌆 Evening"
 
     html = f"""
+    <!DOCTYPE html>
     <html>
     <head>
         <style>
-            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }}
-            h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
-            .meta {{ color: #7f8c8d; font-size: 14px; margin-bottom: 20px; }}
-            .category {{ background: #3498db; color: white; padding: 5px 15px; margin: 20px 0 10px 0; border-radius: 3px; }}
-            .article {{ background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 3px solid #3498db; }}
-            .article h3 {{ margin: 0 0 10px 0; color: #2c3e50; }}
-            .article .source {{ color: #7f8c8d; font-size: 12px; }}
+            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
+            .container {{ background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }}
+            .meta {{ color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }}
+            .category {{ background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 8px 20px; margin: 25px 0 15px 0; border-radius: 5px; font-weight: bold; }}
+            .article {{ background: #f9f9f9; padding: 20px; margin: 15px 0; border-left: 4px solid #3498db; border-radius: 0 5px 5px 0; }}
+            .article h3 {{ margin: 0 0 10px 0; color: #2c3e50; font-size: 16px; }}
+            .article .source {{ color: #7f8c8d; font-size: 12px; margin-top: 10px; }}
             .article a {{ color: #3498db; text-decoration: none; }}
-            .footer {{ text-align: center; color: #95a5a6; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }}
+            .article a:hover {{ text-decoration: underline; }}
+            .footer {{ text-align: center; color: #95a5a6; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }}
+            .empty {{ text-align: center; padding: 40px; color: #95a5a6; }}
         </style>
     </head>
     <body>
-        <h1>{header} News Digest</h1>
-        <div class="meta">📅 {date_str} | 📊 {len(articles)} articles</div>
+        <div class="container">
+            <h1>{header} News Digest</h1>
+            <div class="meta">📅 {date_str} | 📊 {len(articles)} articles</div>
     """
 
     if not articles:
-        html += "<p>No new articles found today.</p>"
+        html += '<div class="empty"><p>No new articles found today.</p></div>'
     else:
         categories = {}
         for article in articles[:15]:
@@ -308,25 +370,23 @@ def format_html_digest(articles, digest_type, date_str):
         for category, cat_articles in categories.items():
             html += f'<div class="category">{category.upper().replace("_", " ")}</div>'
 
-            for article in cat_articles[:5]:
+            for article in cat_articles[:4]:
                 title = article.get('title', 'No title')
-                source = article.get('source', 'Unknown')
-                url = article.get('url', article.get('link', ''))
-                summary = article.get('summary', '')[:200] if article.get('summary') else ''
+                url = article.get('url', '')
+                source = article.get('source', 'Unknown').replace('Google News - ', '')
 
                 html += f'''
                 <div class="article">
-                    <h3>{title}</h3>
+                    <h3>{'<a href="' + url + '">' + title + '</a>' if url else title}</h3>
                     <div class="source">📰 {source}</div>
-                    {f'<p>{summary}...</p>' if summary else ''}
-                    {f'<a href="{url}">Read more →</a>' if url else ''}
                 </div>
                 '''
 
     html += """
-        <div class="footer">
-            🤖 Powered by Khabri News Intelligence<br>
-            ⚡ Auto-delivered via GitHub Actions
+            <div class="footer">
+                🤖 Powered by <strong>Khabri News Intelligence</strong><br>
+                ⚡ Auto-delivered via GitHub Actions
+            </div>
         </div>
     </body>
     </html>
@@ -335,7 +395,7 @@ def format_html_digest(articles, digest_type, date_str):
     return html
 
 
-async def main():
+def main():
     """Main entry point"""
     if len(sys.argv) < 2:
         print("Usage: python github_digest_runner.py [scrape|process|notify] [telegram|email]")
@@ -344,10 +404,10 @@ async def main():
     command = sys.argv[1]
 
     if command == 'scrape':
-        await scrape_news()
+        scrape_rss_feeds()
 
     elif command == 'process':
-        await process_articles()
+        process_articles()
 
     elif command == 'notify':
         if len(sys.argv) < 3:
@@ -357,9 +417,9 @@ async def main():
         channel = sys.argv[2]
 
         if channel == 'telegram':
-            await send_telegram()
+            asyncio.run(send_telegram())
         elif channel == 'email':
-            await send_email()
+            asyncio.run(send_email())
         else:
             print(f"Unknown channel: {channel}")
             sys.exit(1)
@@ -370,4 +430,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
