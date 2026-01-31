@@ -1,0 +1,84 @@
+# =============================================================================
+# Union Budget 2026 - Event-Based News Alerts
+# Khabri - News Intelligence System
+#
+# Special high-frequency alerts during Union Budget 2026
+# Date: February 1, 2026
+# Time: 11:00 AM - 2:00 PM IST
+# =============================================================================
+
+name: 🏛️ Budget 2026 Live Alerts
+
+on:
+  schedule:
+    # During Budget (Feb 1, 2026): Every 10 minutes from 11 AM to 2 PM IST
+    # 11:00 AM IST = 5:30 AM UTC
+    # 2:00 PM IST = 8:30 AM UTC
+
+    # Every 10 minutes during budget hours (5:30 AM - 8:30 AM UTC)
+    - cron: '30,40,50 5 1 2 *'   # 11:00, 11:10, 11:20 AM IST
+    - cron: '0,10,20,30,40,50 6 1 2 *'  # 11:30 AM - 12:20 PM IST
+    - cron: '0,10,20,30,40,50 7 1 2 *'  # 12:30 PM - 1:20 PM IST
+    - cron: '0,10,20,30 8 1 2 *'  # 1:30 PM - 2:00 PM IST
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Run in test mode'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  budget-alert:
+    name: 🏛️ Budget News Alert
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install feedparser aiohttp
+
+      - name: 🏛️ Scrape Budget News
+        run: |
+          python scripts/budget_alert_runner.py scrape
+
+      - name: 🔄 Process & Filter
+        run: |
+          python scripts/budget_alert_runner.py process
+
+      - name: 📱 Send Telegram Alert
+        run: |
+          python scripts/budget_alert_runner.py notify
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: 📊 Log Results
+        if: always()
+        run: |
+          echo "## 🏛️ Budget Alert Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Event | Union Budget 2026 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run Time | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
