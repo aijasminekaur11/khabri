@@ -112,8 +112,9 @@ Note: For event to have automatic alerts like Budget, a workflow file is also ne
 ## Current System Status
 
 - Daily Morning Digest: 7:00 AM IST (Telegram + Email)
-- Daily Evening Digest: 4:00 PM IST (Telegram only)
+- Daily Evening Digest: 4:00 PM IST (Telegram + Email)
 - Budget 2026 Alerts: Feb 1, 11 AM - 2 PM (every 10 min)
+- RBI Policy Alerts: Feb 7, 10 AM - 1 PM (every 15 min)
 
 ## Keywords for Reference
 
