@@ -94,7 +94,7 @@ jobs:
           DIGEST_TYPE: ${{ steps.digest-type.outputs.type }}
 
       - name: 📧 Send Email Notification
-        if: success() && steps.digest-type.outputs.type == 'morning'
+        if: success()
         run: |
           python scripts/github_digest_runner.py notify email
         env:
