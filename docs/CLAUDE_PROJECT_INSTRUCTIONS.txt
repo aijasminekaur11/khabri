@@ -115,6 +115,9 @@ Note: For event to have automatic alerts like Budget, a workflow file is also ne
 - Daily Evening Digest: 4:00 PM IST (Telegram + Email)
 - Budget 2026 Alerts: Feb 1, 11 AM - 2 PM (every 10 min)
 - RBI Policy Alerts: Feb 7, 10 AM - 1 PM (every 15 min)
+- Real-time Breaking News: Every 15 min (8 AM - 9 PM IST)
+- Competitor Watch: Every 2 hours (8 AM - 8 PM IST)
+- Weekly Health Check: Every Monday 7:30 AM IST
 
 ## Keywords for Reference
 
