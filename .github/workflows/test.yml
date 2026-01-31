@@ -4,15 +4,16 @@
 
 name: 🧪 Automated Testing Suite
 
+# DISABLED automatic triggers - only manual run
+# To re-enable, uncomment the push/pull_request/schedule sections
 on:
-  push:
-    branches: [ main, develop, feature/* ]
-  pull_request:
-    branches: [ main, develop ]
-  schedule:
-    # Daily at midnight IST (18:30 UTC)
-    - cron: '30 18 * * *'
-  workflow_dispatch:  # Manual trigger
+  # push:
+  #   branches: [ main, develop, feature/* ]
+  # pull_request:
+  #   branches: [ main, develop ]
+  # schedule:
+  #   - cron: '30 18 * * *'
+  workflow_dispatch:  # Manual trigger only
     inputs:
       test_suite:
         description: 'Test suite to run'
