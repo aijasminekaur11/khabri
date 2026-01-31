@@ -1,0 +1,46 @@
+# =============================================================================
+# Khabri - News Intelligence System
+# Python Dependencies
+# =============================================================================
+
+# Core
+python-dotenv>=1.0.0
+PyYAML>=6.0
+pytz>=2023.3
+
+# Async
+aiohttp>=3.9.0
+asyncio-throttle>=1.0.0
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+feedparser>=6.0.0
+requests>=2.31.0
+
+# Telegram
+python-telegram-bot>=20.0
+
+# Email
+aiosmtplib>=3.0.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Text Processing
+nltk>=3.8.0
+rapidfuzz>=3.0.0
+
+# Utilities
+tenacity>=8.2.0
+python-dateutil>=2.8.0
+
+# =============================================================================
+# Development & Testing (optional)
+# =============================================================================
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.1.0
+# black>=23.0.0
+# flake8>=6.0.0

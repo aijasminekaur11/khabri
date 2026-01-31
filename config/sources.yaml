@@ -1,0 +1,125 @@
+# News Sources Configuration
+# Khabri - News Intelligence System
+
+# =============================================================================
+# NEWS WEBSITES
+# =============================================================================
+news_sources:
+  # Economic Times Real Estate
+  - name: "Economic Times Realty"
+    url: "https://economictimes.indiatimes.com/industry/services/property-/-cstruction"
+    enabled: true
+    frequency_minutes: 30
+    selectors:
+      article: "div.eachStory"
+      title: "h3 a"
+      link: "h3 a"
+      date: "time"
+
+  # LiveMint Real Estate
+  - name: "LiveMint Realty"
+    url: "https://www.livemint.com/industry/real-estate"
+    enabled: true
+    frequency_minutes: 30
+    selectors:
+      article: "div.listView"
+      title: "h2 a"
+      link: "h2 a"
+
+  # Financial Express
+  - name: "Financial Express"
+    url: "https://www.financialexpress.com/money/real-estate/"
+    enabled: true
+    frequency_minutes: 60
+
+  # Business Standard
+  - name: "Business Standard"
+    url: "https://www.business-standard.com/industry/real-estate"
+    enabled: true
+    frequency_minutes: 60
+
+  # Money Control
+  - name: "Money Control"
+    url: "https://www.moneycontrol.com/news/business/real-estate/"
+    enabled: true
+    frequency_minutes: 30
+
+# =============================================================================
+# RSS FEEDS
+# =============================================================================
+rss_feeds:
+  # Government Sources
+  - name: "PIB Housing"
+    url: "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3"
+    enabled: true
+    frequency_minutes: 60
+
+  # News Aggregators
+  - name: "Google News - Indian Real Estate"
+    url: "https://news.google.com/rss/search?q=indian+real+estate&hl=en-IN&gl=IN&ceid=IN:en"
+    enabled: true
+    frequency_minutes: 30
+
+  - name: "Google News - Mumbai Property"
+    url: "https://news.google.com/rss/search?q=mumbai+property+prices&hl=en-IN&gl=IN&ceid=IN:en"
+    enabled: true
+    frequency_minutes: 60
+
+  - name: "Google News - RERA"
+    url: "https://news.google.com/rss/search?q=RERA+india&hl=en-IN&gl=IN&ceid=IN:en"
+    enabled: true
+    frequency_minutes: 120
+
+# =============================================================================
+# COMPETITOR WEBSITES
+# =============================================================================
+competitors:
+  - name: "99acres Blog"
+    url: "https://www.99acres.com/articles/"
+    enabled: true
+    frequency_minutes: 120
+    alert_on_new: true
+
+  - name: "MagicBricks Blog"
+    url: "https://www.magicbricks.com/blog/"
+    enabled: true
+    frequency_minutes: 120
+    alert_on_new: true
+
+  - name: "Housing.com News"
+    url: "https://housing.com/news/"
+    enabled: true
+    frequency_minutes: 120
+    alert_on_new: true
+
+  - name: "NoBroker Blog"
+    url: "https://www.nobroker.in/blog/"
+    enabled: true
+    frequency_minutes: 180
+    alert_on_new: true
+
+  - name: "Square Yards"
+    url: "https://www.squareyards.com/blog/"
+    enabled: false
+    frequency_minutes: 180
+
+  - name: "PropTiger"
+    url: "https://www.proptiger.com/guide/"
+    enabled: false
+    frequency_minutes: 180
+
+# =============================================================================
+# IGRS (Property Registration) SOURCES
+# =============================================================================
+igrs_sources:
+  - name: "Maharashtra IGRS"
+    state: "Maharashtra"
+    url: "https://igrmaharashtra.gov.in/"
+    enabled: false
+    frequency_minutes: 1440  # Once daily
+
+  - name: "Karnataka IGRS"
+    state: "Karnataka"
+    url: "https://karigr.karnataka.gov.in/"
+    enabled: false
+    frequency_minutes: 1440

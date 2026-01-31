@@ -1,0 +1,120 @@
+# Celebrities Configuration
+# Khabri - News Intelligence System
+
+# =============================================================================
+# BOLLYWOOD CELEBRITIES
+# =============================================================================
+bollywood:
+  a_list:
+    - "Shah Rukh Khan"
+    - "Amitabh Bachchan"
+    - "Salman Khan"
+    - "Aamir Khan"
+    - "Akshay Kumar"
+    - "Hrithik Roshan"
+    - "Ranveer Singh"
+    - "Ranbir Kapoor"
+    - "Deepika Padukone"
+    - "Priyanka Chopra"
+    - "Alia Bhatt"
+    - "Kareena Kapoor"
+    - "Katrina Kaif"
+    - "Anushka Sharma"
+
+  producers_directors:
+    - "Karan Johar"
+    - "Aditya Chopra"
+    - "Sanjay Leela Bhansali"
+    - "Rohit Shetty"
+    - "Rajkumar Hirani"
+    - "Farhan Akhtar"
+
+  families:
+    - "Bachchan"
+    - "Kapoor"
+    - "Khan"
+    - "Ambani"
+    - "Birla"
+
+# =============================================================================
+# CRICKET CELEBRITIES
+# =============================================================================
+cricket:
+  current_players:
+    - "Virat Kohli"
+    - "Rohit Sharma"
+    - "MS Dhoni"
+    - "Hardik Pandya"
+    - "KL Rahul"
+    - "Rishabh Pant"
+    - "Jasprit Bumrah"
+    - "Ravindra Jadeja"
+    - "Shubman Gill"
+
+  legends:
+    - "Sachin Tendulkar"
+    - "Sourav Ganguly"
+    - "Rahul Dravid"
+    - "Kapil Dev"
+    - "Sunil Gavaskar"
+
+# =============================================================================
+# BUSINESS TYCOONS
+# =============================================================================
+business:
+  industrialists:
+    - "Mukesh Ambani"
+    - "Gautam Adani"
+    - "Ratan Tata"
+    - "Kumar Mangalam Birla"
+    - "Lakshmi Mittal"
+    - "Azim Premji"
+    - "Cyrus Poonawalla"
+    - "Uday Kotak"
+
+  real_estate:
+    - "Kushal Pal Singh"
+    - "Mangal Prabhat Lodha"
+    - "Niranjan Hiranandani"
+    - "Pirojsha Godrej"
+    - "Vikas Oberoi"
+    - "Rajiv Singh"
+    - "Irfan Razack"
+
+  tech:
+    - "Shiv Nadar"
+    - "Nandan Nilekani"
+    - "Narayana Murthy"
+    - "Bhavish Aggarwal"
+    - "Vijay Shekhar Sharma"
+
+# =============================================================================
+# POLITICIANS (Real Estate Context)
+# =============================================================================
+politicians:
+  - "Narendra Modi"
+  - "Yogi Adityanath"
+  - "Devendra Fadnavis"
+  - "Eknath Shinde"
+  - "Piyush Goyal"
+  - "Hardeep Singh Puri"
+
+# =============================================================================
+# REGIONAL CELEBRITIES
+# =============================================================================
+regional:
+  south:
+    - "Rajinikanth"
+    - "Kamal Haasan"
+    - "Vijay"
+    - "Mahesh Babu"
+    - "Prabhas"
+    - "Allu Arjun"
+    - "Ram Charan"
+    - "Jr NTR"
+
+  sports_other:
+    - "PV Sindhu"
+    - "Saina Nehwal"
+    - "Neeraj Chopra"
+    - "Mary Kom"

@@ -1,0 +1,177 @@
+# Keywords Configuration
+# Khabri - News Intelligence System
+
+# =============================================================================
+# HIGH PRIORITY KEYWORDS (Immediate Alerts)
+# =============================================================================
+priority_keywords:
+  critical:
+    - "breaking"
+    - "RBI"
+    - "repo rate"
+    - "interest rate cut"
+    - "interest rate hike"
+    - "PMAY"
+    - "stamp duty"
+    - "RERA"
+    - "government scheme"
+
+  high:
+    - "home loan"
+    - "EMI"
+    - "tax benefit"
+    - "80C"
+    - "HRA"
+    - "property tax"
+    - "circle rate"
+    - "ready reckoner"
+
+# =============================================================================
+# CATEGORY KEYWORDS
+# =============================================================================
+categories:
+  market_updates:
+    - "property price"
+    - "real estate market"
+    - "housing demand"
+    - "sales volume"
+    - "inventory"
+    - "unsold units"
+    - "price appreciation"
+    - "price correction"
+    - "market trend"
+    - "property index"
+
+  policy:
+    - "RERA"
+    - "GST"
+    - "stamp duty"
+    - "registration"
+    - "government policy"
+    - "housing policy"
+    - "affordable housing"
+    - "PMAY"
+    - "Pradhan Mantri"
+    - "subsidy"
+
+  infrastructure:
+    - "metro"
+    - "airport"
+    - "highway"
+    - "expressway"
+    - "connectivity"
+    - "infrastructure"
+    - "smart city"
+    - "transit"
+    - "development authority"
+
+  launches:
+    - "new launch"
+    - "project launch"
+    - "new project"
+    - "bookings open"
+    - "pre-launch"
+    - "upcoming project"
+
+  celebrity:
+    - "celebrity"
+    - "Bollywood"
+    - "cricketer"
+    - "bought"
+    - "purchased"
+    - "investment"
+
+  commercial:
+    - "office space"
+    - "commercial"
+    - "co-working"
+    - "retail"
+    - "warehouse"
+    - "industrial"
+    - "Grade A"
+
+  rental:
+    - "rent"
+    - "rental"
+    - "lease"
+    - "tenant"
+    - "landlord"
+    - "yield"
+
+# =============================================================================
+# LOCATION KEYWORDS
+# =============================================================================
+locations:
+  metros:
+    - "Mumbai"
+    - "Delhi"
+    - "Bangalore"
+    - "Bengaluru"
+    - "Hyderabad"
+    - "Chennai"
+    - "Kolkata"
+    - "Pune"
+
+  tier2:
+    - "Ahmedabad"
+    - "Jaipur"
+    - "Lucknow"
+    - "Chandigarh"
+    - "Kochi"
+    - "Indore"
+    - "Nagpur"
+
+  micro_markets:
+    - "Navi Mumbai"
+    - "Thane"
+    - "Gurgaon"
+    - "Noida"
+    - "Greater Noida"
+    - "Whitefield"
+    - "Electronic City"
+    - "Gachibowli"
+    - "HITEC City"
+
+# =============================================================================
+# COMPANY KEYWORDS
+# =============================================================================
+companies:
+  developers:
+    - "DLF"
+    - "Godrej Properties"
+    - "Oberoi Realty"
+    - "Prestige"
+    - "Brigade"
+    - "Sobha"
+    - "Lodha"
+    - "Mahindra Lifespaces"
+    - "Tata Housing"
+    - "L&T Realty"
+    - "Shapoorji Pallonji"
+    - "Hiranandani"
+    - "Piramal Realty"
+    - "Birla Estates"
+    - "Puravankara"
+    - "Sunteck"
+    - "Phoenix Mills"
+
+  competitors:
+    - "99acres"
+    - "MagicBricks"
+    - "Housing.com"
+    - "NoBroker"
+    - "Square Yards"
+    - "PropTiger"
+    - "CommonFloor"
+    - "Makaan"
+
+# =============================================================================
+# NEGATIVE KEYWORDS (Filter Out)
+# =============================================================================
+exclude_keywords:
+  - "sponsored"
+  - "advertisement"
+  - "paid partnership"
+  - "casino"
+  - "betting"
+  - "lottery"
