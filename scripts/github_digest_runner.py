@@ -172,12 +172,13 @@ async def send_email():
     """Send digest via Email"""
     logger.info("Sending Email notification...")
 
-    # Get credentials from environment
-    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('SMTP_PORT', 587))
-    username = os.getenv('SMTP_USERNAME')
-    password = os.getenv('SMTP_PASSWORD')
-    recipient = os.getenv('EMAIL_RECIPIENT')
+    # Get credentials from environment (matching your .env variable names)
+    smtp_host = os.getenv('EMAIL_SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
+    username = os.getenv('EMAIL_USERNAME')
+    password = os.getenv('EMAIL_PASSWORD')
+    sender = os.getenv('EMAIL_FROM')
+    recipient = os.getenv('EMAIL_TO')
     digest_type = os.getenv('DIGEST_TYPE', 'morning')
 
     if not all([username, password, recipient]):
@@ -202,7 +203,7 @@ async def send_email():
         smtp_port=smtp_port,
         username=username,
         password=password,
-        sender_email=username,
+        sender_email=sender or username,
         default_recipients=[recipient]
     )
 
