@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "id": "et_realty",
+      "name": "Economic Times Realty",
+      "url": "https://economictimes.indiatimes.com/industry/services/property-/-cstruction",
+      "type": "scrape",
+      "category": "real_estate",
+      "enabled": true,
+      "rate_limit_ms": 1000
+    },
+    {
+      "id": "pib",
+      "name": "PIB",
+      "url": "https://pib.gov.in",
+      "type": "rss",
+      "category": "policy",
+      "enabled": true,
+      "rate_limit_ms": 2000
+    }
+  ]
+}

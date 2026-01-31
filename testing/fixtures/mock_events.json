@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "id": "budget-2026",
+      "name": "Union Budget 2026",
+      "date": "2026-02-01",
+      "start_time": "10:30",
+      "end_time": "18:00",
+      "timezone": "Asia/Kolkata",
+      "interval_minutes": 15,
+      "keywords": ["budget", "tax", "fiscal"],
+      "sources": ["et_realty", "pib"],
+      "active": true
+    }
+  ]
+}

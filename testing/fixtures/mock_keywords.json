@@ -1,0 +1,24 @@
+{
+  "categories": {
+    "real_estate": {
+      "primary": ["property", "real estate", "housing"],
+      "secondary": ["apartment", "flat", "villa"],
+      "exclude": ["rent only"]
+    },
+    "infrastructure": {
+      "primary": ["metro", "airport", "expressway"],
+      "secondary": ["highway", "smart city"],
+      "exclude": []
+    },
+    "policy": {
+      "primary": ["budget", "RERA", "stamp duty"],
+      "secondary": ["GST", "tax", "subsidy"],
+      "exclude": []
+    },
+    "cities": {
+      "primary": ["Mumbai", "Delhi", "Bangalore"],
+      "secondary": ["Pune", "Hyderabad", "Chennai"],
+      "exclude": []
+    }
+  }
+}

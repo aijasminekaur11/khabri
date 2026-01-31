@@ -1,0 +1,15 @@
+{
+  "timezone": "Asia/Kolkata",
+  "digests": {
+    "morning": {
+      "enabled": true,
+      "time": "07:00",
+      "include": ["real_estate", "infrastructure", "policy"]
+    },
+    "evening": {
+      "enabled": true,
+      "time": "16:00",
+      "include": ["real_estate", "celebrity"]
+    }
+  }
+}

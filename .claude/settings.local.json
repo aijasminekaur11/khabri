@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"D:\\Jasmine\\00001_Content_app\\News_Update\\logs\\cli_2.log\")",
+      "Bash(\"D:\\Jasmine\\00001_Content_app\\News_Update\\logs\\cli_3.log\")",
+      "Bash(python -m pytest:*)",
+      "Bash(cat:*)",
+      "Bash(dir:*)",
+      "Bash(logs/cli_4.log)",
+      "Bash(python testing/scripts/generate_issue.py:*)",
+      "Bash(pytest:*)",
+      "Bash(python -c:*)",
+      "Bash(move:*)",
+      "Bash(move \"D:\\Jasmine\\00001_Content_app\\News_Update\\testing\\test_cases\\test_email_notifier.py\" \"D:\\Jasmine\\00001_Content_app\\News_Update\\testing\\test_cases\\unit\\test_email_notifier.py\")",
+      "Bash(del testingtest_casestest_news_scraper.py)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(logs/cli_1.log)",
+      "Bash(echo:*)",
+      "Bash(logs/orchestrator_phase_05b.log)",
+      "Bash(logs/cli_2.log)",
+      "Bash(logs/cli_3.log)",
+      "Bash(del temp_debug*.py)",
+      "Bash(git --version)",
+      "Bash(gh:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

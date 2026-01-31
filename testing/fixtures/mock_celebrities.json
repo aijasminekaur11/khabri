@@ -1,0 +1,22 @@
+{
+  "celebrities": [
+    {
+      "name": "Shah Rukh Khan",
+      "aliases": ["SRK", "King Khan"],
+      "category": "bollywood",
+      "priority": "high"
+    },
+    {
+      "name": "Virat Kohli",
+      "aliases": ["Kohli", "King Kohli"],
+      "category": "cricket",
+      "priority": "high"
+    },
+    {
+      "name": "Mukesh Ambani",
+      "aliases": ["Ambani"],
+      "category": "business",
+      "priority": "high"
+    }
+  ]
+}
