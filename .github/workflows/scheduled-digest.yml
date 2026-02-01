@@ -62,11 +62,15 @@ jobs:
             echo "type=${{ github.event.inputs.digest_type }}" >> $GITHUB_OUTPUT
           else
             # Check current UTC hour to determine digest type
+            # Morning: 1:30 AM UTC (7 AM IST) - runs between 0-5 UTC
+            # Evening: 10:30 AM UTC (4 PM IST) - runs between 6-15 UTC
             HOUR=$(date -u +%H)
             if [ "$HOUR" -lt "6" ]; then
               echo "type=morning" >> $GITHUB_OUTPUT
+              echo "Detected: Morning digest (UTC hour: $HOUR)"
             else
               echo "type=evening" >> $GITHUB_OUTPUT
+              echo "Detected: Evening digest (UTC hour: $HOUR)"
             fi
           fi
 
