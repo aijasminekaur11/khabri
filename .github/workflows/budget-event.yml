@@ -21,17 +21,8 @@ on:
     - cron: '0,10,20,30,40,50 7 1 2 *'  # 12:30 PM - 1:20 PM IST
     - cron: '0,10,20,30 8 1 2 *'  # 1:30 PM - 2:00 PM IST
 
-  # Manual trigger for testing
+  # Manual trigger
   workflow_dispatch:
-    inputs:
-      test_mode:
-        description: 'Run in test mode'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
 
 env:
   PYTHON_VERSION: '3.11'

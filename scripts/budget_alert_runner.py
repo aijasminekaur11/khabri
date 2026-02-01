@@ -40,34 +40,58 @@ ARTICLES_FILE = '/tmp/budget_articles.json'
 PROCESSED_FILE = '/tmp/budget_processed.json'
 SENT_FILE = '/tmp/budget_sent.json'  # Track already sent articles
 
-# Budget-specific keywords
-BUDGET_KEYWORDS = [
-    'budget 2026',
-    'union budget',
-    'finance minister',
-    'nirmala sitharaman',
-    'real estate budget',
-    'housing budget',
+# REAL ESTATE & INFRASTRUCTURE focused keywords ONLY
+# Must match at least one of these to be included
+MUST_HAVE_KEYWORDS = [
+    'real estate',
+    'housing',
+    'property',
+    'home loan',
+    'affordable housing',
     'pmay',
     'pradhan mantri awas',
-    'affordable housing',
     'stamp duty',
-    'home loan',
-    'tax rebate',
-    'section 80c',
-    'hra',
-    'gst real estate',
     'infrastructure',
     'smart city',
     'metro',
     'rera',
-    'property tax',
-    'capital gains',
-    'ltcg',
-    'stcg',
+    'construction',
+    'builder',
+    'developer',
+    'residential',
+    'commercial property',
+    'realty',
+    'home buyer',
+    'rent',
+    'rental',
+    'gst housing',
+    'capital gains property',
+    'section 24',
+    'section 80eea',
+    'home ownership',
+    'urban development',
+    'highway',
+    'expressway',
+    'airport',
+    'dlf',
+    'godrej properties',
+    'oberoi realty',
+    'prestige',
+    'sobha',
+    'brigade',
+]
+
+# Secondary keywords (boost score but not required)
+BOOST_KEYWORDS = [
+    'budget 2026',
+    'union budget',
+    'finance minister',
+    'nirmala sitharaman',
+    'tax rebate',
+    'section 80c',
+    'hra',
     'interest rate',
     'rbi',
-    'fiscal deficit',
 ]
 
 
@@ -89,31 +113,35 @@ def scrape_budget_news():
     """Scrape budget-related news"""
     logger.info("🏛️ Scraping Budget 2026 news...")
 
-    # Budget-specific RSS feeds
+    # REAL ESTATE & INFRASTRUCTURE focused RSS feeds
     rss_feeds = [
         {
-            'name': 'Budget 2026',
-            'url': 'https://news.google.com/rss/search?q=union+budget+2026+india&hl=en-IN&gl=IN&ceid=IN:en'
-        },
-        {
             'name': 'Budget Real Estate',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+real+estate+housing&hl=en-IN&gl=IN&ceid=IN:en'
+            'url': 'https://news.google.com/rss/search?q=budget+2026+real+estate+property&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
             'name': 'Budget Housing',
+            'url': 'https://news.google.com/rss/search?q=budget+2026+housing+home+loan&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Budget PMAY',
             'url': 'https://news.google.com/rss/search?q=budget+2026+PMAY+affordable+housing&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Tax',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+home+loan+tax+benefit&hl=en-IN&gl=IN&ceid=IN:en'
-        },
-        {
             'name': 'Budget Infrastructure',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+infrastructure+smart+city&hl=en-IN&gl=IN&ceid=IN:en'
+            'url': 'https://news.google.com/rss/search?q=budget+2026+infrastructure+metro+highway&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Nirmala Sitharaman',
-            'url': 'https://news.google.com/rss/search?q=nirmala+sitharaman+budget&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Budget Stamp Duty',
+            'url': 'https://news.google.com/rss/search?q=budget+2026+stamp+duty+property+tax&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Budget Realty',
+            'url': 'https://news.google.com/rss/search?q=budget+2026+realty+builder+developer&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Budget Smart City',
+            'url': 'https://news.google.com/rss/search?q=budget+2026+smart+city+urban+development&hl=en-IN&gl=IN&ceid=IN:en'
         }
     ]
 
@@ -189,15 +217,23 @@ def process_budget_articles():
             continue
         seen_titles.add(title_key)
 
-        # Check for budget keywords
+        # Check for REAL ESTATE / INFRASTRUCTURE keywords (REQUIRED)
         text = (article.get('title', '') + ' ' + article.get('content', '')).lower()
 
-        relevance_score = sum(1 for kw in BUDGET_KEYWORDS if kw in text)
+        # MUST have at least one real estate/infrastructure keyword
+        must_have_matches = [kw for kw in MUST_HAVE_KEYWORDS if kw in text]
 
-        if relevance_score >= 1:  # At least 1 keyword match
-            article['relevance_score'] = relevance_score
-            article['matched_keywords'] = [kw for kw in BUDGET_KEYWORDS if kw in text]
-            processed.append(article)
+        if not must_have_matches:
+            # Skip if no real estate/infrastructure keywords
+            continue
+
+        # Calculate score with boost keywords
+        boost_matches = [kw for kw in BOOST_KEYWORDS if kw in text]
+        relevance_score = len(must_have_matches) * 2 + len(boost_matches)
+
+        article['relevance_score'] = relevance_score
+        article['matched_keywords'] = must_have_matches[:5]  # Show real estate keywords
+        processed.append(article)
 
     # Sort by relevance
     processed.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
