@@ -18,8 +18,11 @@ import json
 import asyncio
 import logging
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# IST timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 import smtplib
 from email.mime.text import MIMEText
@@ -265,8 +268,9 @@ async def send_telegram_alert():
 
 def format_rbi_alert(articles):
     """Format RBI alert message"""
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
+    # Convert to IST timezone
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
 
     lines = [
         "🏦 <b>RBI POLICY REVIEW - LIVE UPDATE</b>",
@@ -323,10 +327,10 @@ def send_email_alert():
         logger.info("No new RBI articles to email")
         return
 
-    # Format email
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
-    date_str = now.strftime('%B %d, %Y')
+    # Format email - use IST timezone
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
+    date_str = now_ist.strftime('%B %d, %Y')
 
     subject = f"🏦 RBI Policy Live Update - {time_str} IST"
 

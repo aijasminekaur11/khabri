@@ -18,8 +18,11 @@ import json
 import asyncio
 import logging
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# IST timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 import smtplib
 from email.mime.text import MIMEText
@@ -302,8 +305,9 @@ async def send_telegram_alert():
 
 def format_budget_alert(articles):
     """Format budget alert message"""
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
+    # Convert to IST timezone
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
 
     lines = [
         "🏛️ <b>UNION BUDGET 2026 - LIVE UPDATE</b>",
@@ -360,10 +364,10 @@ def send_email_alert():
         logger.info("No new budget articles to email")
         return
 
-    # Format email
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
-    date_str = now.strftime('%B %d, %Y')
+    # Format email - use IST timezone
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
+    date_str = now_ist.strftime('%B %d, %Y')
 
     subject = f"🏛️ Budget 2026 Live Update - {time_str} IST"
 

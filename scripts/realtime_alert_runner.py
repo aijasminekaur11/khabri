@@ -18,8 +18,11 @@ import json
 import asyncio
 import logging
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# IST timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 import feedparser
 import aiohttp
@@ -261,8 +264,9 @@ async def send_breaking_alert():
 
 def format_breaking_alert(articles):
     """Format breaking news alert message"""
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
+    # Convert to IST timezone
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
 
     lines = [
         "⚡ <b>BREAKING NEWS ALERT</b>",
