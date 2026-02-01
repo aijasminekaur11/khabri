@@ -277,9 +277,13 @@ def format_rbi_alert(articles):
         url = article.get('url', '')
         keywords = article.get('matched_keywords', [])[:3]
 
-        lines.append(f"<b>{i}.</b> {'<a href=\"' + url + '\">' + title + '</a>' if url else title}")
+        if url:
+            lines.append(f'<b>{i}.</b> <a href="{url}">{title}</a>')
+        else:
+            lines.append(f"<b>{i}.</b> {title}")
         if keywords:
-            lines.append(f"   🏷️ {', '.join(keywords[:3])}")
+            keyword_str = ', '.join(keywords[:3])
+            lines.append(f"   🏷️ {keyword_str}")
         lines.append("")
 
     lines.append("━━━━━━━━━━━━━━━━━━━━")
