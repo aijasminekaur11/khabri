@@ -67,10 +67,22 @@ jobs:
 
       - name: 📱 Send Telegram Alert
         run: |
-          python scripts/rbi_alert_runner.py notify
+          python scripts/rbi_alert_runner.py notify telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: 📧 Send Email Alert
+        if: success()
+        run: |
+          python scripts/rbi_alert_runner.py notify email
+        env:
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
 
       - name: 📊 Log Results
         if: always()

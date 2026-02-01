@@ -21,6 +21,10 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 import feedparser
 import aiohttp
 
@@ -209,9 +213,9 @@ def process_budget_articles():
     return processed
 
 
-async def send_budget_alert():
+async def send_telegram_alert():
     """Send budget alert via Telegram"""
-    logger.info("Sending Budget alert...")
+    logger.info("Sending Budget alert via Telegram...")
 
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     chat_id = os.getenv('TELEGRAM_CHAT_ID')
@@ -294,6 +298,103 @@ def format_budget_alert(articles):
     return "\n".join(lines)
 
 
+def send_email_alert():
+    """Send budget alert via Email"""
+    logger.info("Sending Budget alert via Email...")
+
+    smtp_host = os.getenv('EMAIL_SMTP_HOST')
+    smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
+    username = os.getenv('EMAIL_USERNAME')
+    password = os.getenv('EMAIL_PASSWORD')
+    from_email = os.getenv('EMAIL_FROM')
+    to_email = os.getenv('EMAIL_TO')
+
+    if not all([smtp_host, username, password, from_email, to_email]):
+        logger.error("Email credentials not set!")
+        sys.exit(1)
+
+    if not os.path.exists(PROCESSED_FILE):
+        logger.warning("No processed articles")
+        return
+
+    with open(PROCESSED_FILE, 'r') as f:
+        articles = json.load(f)
+
+    if not articles:
+        logger.info("No new budget articles to email")
+        return
+
+    # Format email
+    now = datetime.now()
+    time_str = now.strftime('%I:%M %p')
+    date_str = now.strftime('%B %d, %Y')
+
+    subject = f"🏛️ Budget 2026 Live Update - {time_str} IST"
+
+    # HTML email body
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1a5f7a, #2d8b74); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">🏛️ UNION BUDGET 2026</h1>
+            <p style="margin: 5px 0;">LIVE UPDATE - {time_str} IST</p>
+            <p style="margin: 5px 0; font-size: 12px;">{date_str}</p>
+        </div>
+
+        <div style="padding: 20px;">
+            <h2 style="color: #1a5f7a; border-bottom: 2px solid #1a5f7a; padding-bottom: 10px;">
+                📰 Latest Budget News
+            </h2>
+    """
+
+    for i, article in enumerate(articles[:5], 1):
+        title = article.get('title', 'No title')
+        url = article.get('url', '')
+        keywords = article.get('matched_keywords', [])[:3]
+
+        html_body += f"""
+            <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0; color: #333;">
+                    {i}. <a href="{url}" style="color: #1a5f7a; text-decoration: none;">{title}</a>
+                </h3>
+                <p style="margin: 5px 0; color: #666; font-size: 12px;">
+                    🏷️ {', '.join(keywords[:3]) if keywords else 'Budget News'}
+                </p>
+            </div>
+        """
+
+    html_body += """
+        </div>
+
+        <div style="background: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+            <p>🔔 Live alerts every 10 minutes during Budget presentation</p>
+            <p>🤖 Powered by Khabri News Intelligence</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Create message
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = from_email
+    msg['To'] = to_email
+
+    # Attach HTML
+    msg.attach(MIMEText(html_body, 'html'))
+
+    # Send email
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(username, password)
+            server.sendmail(from_email, to_email.split(','), msg.as_string())
+        logger.info(f"Budget email sent! ({len(articles)} articles)")
+    except Exception as e:
+        logger.error(f"Email send failed: {e}")
+        sys.exit(1)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python budget_alert_runner.py [scrape|process|notify]")
@@ -306,7 +407,19 @@ def main():
     elif command == 'process':
         process_budget_articles()
     elif command == 'notify':
-        asyncio.run(send_budget_alert())
+        # Support both old and new format
+        if len(sys.argv) > 2:
+            channel = sys.argv[2]
+            if channel == 'telegram':
+                asyncio.run(send_telegram_alert())
+            elif channel == 'email':
+                send_email_alert()
+            else:
+                print(f"Unknown channel: {channel}")
+                sys.exit(1)
+        else:
+            # Default: send to telegram only (backward compatible)
+            asyncio.run(send_telegram_alert())
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)
