@@ -5,6 +5,7 @@ Fetches and parses RSS/Atom feeds from configured sources.
 """
 
 import hashlib
+import logging
 import time
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -12,6 +13,8 @@ import feedparser
 import requests
 
 from src.config import ConfigManager
+
+logger = logging.getLogger(__name__)
 
 
 class RSSReader:
@@ -121,7 +124,7 @@ class RSSReader:
             feed = feedparser.parse(url)
 
             if feed.bozo:  # Feed has errors
-                print(f"Warning: Feed {source_id} has parsing errors")
+                logger.warning(f"Feed {source_id} has parsing errors")
 
             news_items = []
 
@@ -154,7 +157,7 @@ class RSSReader:
             return news_items
 
         except Exception as e:
-            print(f"Error reading RSS feed {source_id} ({url}): {e}")
+            logger.error(f"Error reading RSS feed {source_id} ({url}): {e}")
             return []
 
     def read_all(self) -> List[Dict]:

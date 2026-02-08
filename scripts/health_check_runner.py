@@ -16,6 +16,7 @@ import sys
 import json
 import asyncio
 import logging
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -29,8 +30,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger('HealthCheck')
 
-# Temp files
-HEALTH_REPORT_FILE = '/tmp/health_report.json'
+# Temp files - use tempfile module for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+HEALTH_REPORT_FILE = os.path.join(_temp_dir, 'health_report.json')
 
 # Config file path
 CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'sources.yaml'

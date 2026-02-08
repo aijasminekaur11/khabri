@@ -3,21 +3,18 @@
 # Khabri - News Intelligence System
 #
 # Monitors competitor blogs/news for new articles
-# Runs every 2 hours during business hours
+# Runs twice daily: Morning (8 AM IST) and Evening (6 PM IST)
 # =============================================================================
 
 name: 🏢 Competitor Watch
 
 on:
   schedule:
-    # Every 2 hours from 8 AM to 8 PM IST (2:30 AM to 2:30 PM UTC)
-    - cron: '30 2 * * *'   # 8:00 AM IST
-    - cron: '30 4 * * *'   # 10:00 AM IST
-    - cron: '30 6 * * *'   # 12:00 PM IST
-    - cron: '30 8 * * *'   # 2:00 PM IST
-    - cron: '30 10 * * *'  # 4:00 PM IST
-    - cron: '30 12 * * *'  # 6:00 PM IST
-    - cron: '30 14 * * *'  # 8:00 PM IST
+    # Morning: 8:00 AM IST = 2:30 AM UTC
+    - cron: '30 2 * * *'
+
+    # Evening: 6:00 PM IST = 12:30 PM UTC
+    - cron: '30 12 * * *'
 
   # Manual trigger for testing
   workflow_dispatch:
@@ -46,6 +43,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser aiohttp pyyaml beautifulsoup4 requests
 
+      - name: 📂 Restore sent articles cache
+        uses: actions/cache@v4
+        with:
+          path: .khabri_cache
+          key: khabri-competitor-sent-${{ github.run_id }}
+          restore-keys: |
+            khabri-competitor-sent-
+
       - name: 🏢 Scrape Competitor News
         run: |
           python scripts/competitor_alert_runner.py scrape
@@ -60,6 +65,13 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: 💾 Save sent articles cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .khabri_cache
+          key: khabri-competitor-sent-${{ github.run_id }}
 
       - name: 📊 Log Results
         if: always()

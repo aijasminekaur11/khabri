@@ -13,7 +13,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from .base_notifier import BaseNotifier
+from .base_notifier import BaseNotifier, NotificationError
 
 
 logger = logging.getLogger(__name__)
@@ -53,15 +53,15 @@ class EmailNotifier(BaseNotifier):
         Args:
             smtp_server: SMTP server address (defaults to Gmail)
             smtp_port: SMTP server port (defaults to 587)
-            username: SMTP username (defaults to env GMAIL_ADDRESS)
-            password: SMTP password (defaults to env GMAIL_APP_PASSWORD)
-            recipient: Recipient email address (defaults to env RECIPIENT_EMAIL)
+            username: SMTP username (defaults to env SMTP_USERNAME)
+            password: SMTP password (defaults to env SMTP_PASSWORD)
+            recipient: Recipient email address (defaults to env EMAIL_RECIPIENT)
         """
         self.smtp_server = smtp_server or self.DEFAULT_SMTP_SERVER
         self.smtp_port = smtp_port or self.DEFAULT_SMTP_PORT
-        self.username = username or os.getenv('GMAIL_ADDRESS')
-        self.password = password or os.getenv('GMAIL_APP_PASSWORD')
-        self.recipient = recipient or os.getenv('RECIPIENT_EMAIL')
+        self.username = username or os.getenv('SMTP_USERNAME')
+        self.password = password or os.getenv('SMTP_PASSWORD')
+        self.recipient = recipient or os.getenv('EMAIL_RECIPIENT')
 
         if not all([self.username, self.password, self.recipient]):
             logger.warning("Email credentials not fully configured. Notifier will not function.")
@@ -563,7 +563,7 @@ class EmailNotifier(BaseNotifier):
 
         except Exception as e:
             logger.error(f"Error sending email digest: {e}")
-            return False
+            raise NotificationError(f"Failed to send email digest", e)
 
     def send_alert(self, news: Dict[str, Any]) -> bool:
         """
@@ -592,7 +592,7 @@ class EmailNotifier(BaseNotifier):
 
         except Exception as e:
             logger.error(f"Error sending email alert: {e}")
-            return False
+            raise NotificationError(f"Failed to send email alert", e)
 
     def health_check(self) -> bool:
         """

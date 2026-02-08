@@ -18,6 +18,7 @@ import json
 import asyncio
 import logging
 import hashlib
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -35,39 +36,68 @@ logging.basicConfig(
 )
 logger = logging.getLogger('RealtimeAlert')
 
-# Temp files
-ARTICLES_FILE = '/tmp/realtime_articles.json'
-PROCESSED_FILE = '/tmp/realtime_processed.json'
-SENT_FILE = '/tmp/realtime_sent.json'
+# Temp files - use tempfile module for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+ARTICLES_FILE = os.path.join(_temp_dir, 'realtime_articles.json')
+PROCESSED_FILE = os.path.join(_temp_dir, 'realtime_processed.json')
+
+# Persistent sent tracking
+CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
+SENT_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'realtime_sent.json')
 
 # Config file path
 KEYWORDS_PATH = Path(__file__).parent.parent / 'config' / 'keywords.yaml'
 
-# HIGH PRIORITY keywords - only alert on these
+# HIGH PRIORITY keywords - only alert on these (REAL ESTATE FOCUSED)
 HIGH_PRIORITY_KEYWORDS = [
-    'breaking',
-    'just in',
-    'flash',
-    'urgent',
-    'rbi',
-    'reserve bank',
-    'repo rate',
-    'interest rate cut',
-    'interest rate hike',
+    # Breaking news indicators + real estate terms
+    'breaking real estate',
+    'breaking property',
+    'breaking housing',
+    # RBI + Home Loan (real estate impact)
+    'rbi home loan',
+    'rbi housing',
+    'repo rate home',
+    'interest rate home loan',
+    'emi cut',
+    'emi hike',
+    # Real estate policy
     'pmay',
     'pradhan mantri awas',
     'rera',
     'stamp duty',
-    'budget 2026',
-    'finance minister',
-    'home loan',
-    '₹100 crore',
-    '₹500 crore',
+    'real estate budget',
+    'housing budget',
+    'property tax',
+    # Real estate deals
+    'real estate deal',
+    'property acquisition',
+    'land deal',
+    '₹100 crore property',
+    '₹500 crore real estate',
     '₹1000 crore',
-    'major deal',
+    # Major developers
     'dlf',
     'godrej properties',
     'oberoi realty',
+    'prestige estates',
+    'sobha developers',
+    'brigade enterprises',
+    'lodha',
+    'mahindra lifespace',
+    # Infrastructure impacting real estate
+    'metro real estate',
+    'airport property',
+    'infrastructure development',
+]
+
+# MUST match at least one real estate keyword to be included
+REAL_ESTATE_KEYWORDS = [
+    'real estate', 'property', 'housing', 'home loan', 'affordable housing',
+    'pmay', 'rera', 'stamp duty', 'builder', 'developer', 'residential',
+    'commercial property', 'realty', 'home buyer', 'rental', 'dlf',
+    'godrej properties', 'oberoi realty', 'prestige', 'sobha', 'brigade',
+    'infrastructure', 'metro', 'highway', 'airport', 'smart city',
 ]
 
 # RSS feeds to monitor for breaking news
@@ -92,21 +122,39 @@ REALTIME_FEEDS = [
 
 
 def load_sent_articles():
-    """Load previously sent article IDs"""
-    if os.path.exists(SENT_FILE):
-        with open(SENT_FILE, 'r') as f:
-            data = json.load(f)
-            # Only keep last 24 hours of sent IDs
-            return set(data.get('ids', []))
+    """Load previously sent article IDs from persistent cache"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if os.path.exists(SENT_FILE):
+            with open(SENT_FILE, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return set(data)
+                return set(data.get('ids', []))
+    except Exception as e:
+        logger.warning(f"Could not load sent articles: {e}")
     return set()
 
 
 def save_sent_articles(sent_ids):
-    """Save sent article IDs"""
-    # Keep only last 500 to prevent file bloat
-    ids_list = list(sent_ids)[-500:]
-    with open(SENT_FILE, 'w') as f:
-        json.dump({'ids': ids_list, 'updated': datetime.now().isoformat()}, f)
+    """Save sent article IDs with timestamp"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        ids_list = list(sent_ids)[-500:]
+
+        with open(SENT_FILE, 'w') as f:
+            json.dump({
+                'ids': ids_list,
+                'updated': datetime.now(IST).isoformat(),
+                'count': len(ids_list)
+            }, f, indent=2)
+        logger.info(f"Saved {len(ids_list)} sent article IDs")
+    except Exception as e:
+        logger.error(f"Could not save sent articles: {e}")
 
 
 def scrape_breaking_news():
@@ -188,9 +236,14 @@ def process_breaking_articles():
         # Check for HIGH PRIORITY keywords
         text = (article.get('title', '') + ' ' + article.get('content', '')).lower()
 
+        # MUST have at least one real estate keyword
+        has_real_estate = any(kw in text for kw in REAL_ESTATE_KEYWORDS)
+        if not has_real_estate:
+            continue
+
         matched_keywords = [kw for kw in HIGH_PRIORITY_KEYWORDS if kw in text]
 
-        # Must match at least 1 high-priority keyword
+        # Must match at least 1 high-priority keyword AND be real estate related
         if matched_keywords:
             article['priority'] = 'HIGH'
             article['matched_keywords'] = matched_keywords

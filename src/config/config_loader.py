@@ -1,9 +1,9 @@
 """
 Configuration Loader
-Handles loading JSON configuration files from the config/ directory
+Handles loading YAML configuration files from the config/ directory
 """
 
-import json
+import yaml
 import os
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -35,7 +35,7 @@ class ConfigLoader:
         Load a configuration file
 
         Args:
-            config_name: Name of the config file (without .json extension)
+            config_name: Name of the config file (without .yaml extension)
             use_cache: Whether to use cached version if available
 
         Returns:
@@ -43,9 +43,9 @@ class ConfigLoader:
 
         Raises:
             FileNotFoundError: If config file doesn't exist
-            json.JSONDecodeError: If config file has invalid JSON
+            yaml.YAMLError: If config file has invalid YAML
         """
-        config_path = self.config_dir / f"{config_name}.json"
+        config_path = self.config_dir / f"{config_name}.yaml"
 
         # Check cache if enabled
         if use_cache and config_name in self._cache:
@@ -56,7 +56,7 @@ class ConfigLoader:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         with open(config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
+            config_data = yaml.safe_load(f) or {}
 
         # Update cache
         self._cache[config_name] = config_data
@@ -73,25 +73,37 @@ class ConfigLoader:
         """
         all_configs = {}
 
-        # Expected config files based on BLUEPRINT
-        config_files = [
+        # Config files that exist as YAML
+        yaml_files = [
             'sources',
             'keywords',
             'celebrities',
-            'events',
-            'interests',
             'schedules'
         ]
+        
+        # Optional config files (may not exist)
+        optional_files = [
+            'events',
+            'interests'
+        ]
 
-        for config_name in config_files:
+        for config_name in yaml_files:
             try:
                 all_configs[config_name] = self.load(config_name)
             except FileNotFoundError:
-                # Config file doesn't exist yet - return empty dict
+                # Config file doesn't exist - return empty dict
                 all_configs[config_name] = {}
-            except json.JSONDecodeError as e:
-                # Invalid JSON - re-raise with more context
-                raise ValueError(f"Invalid JSON in {config_name}.json: {str(e)}")
+            except yaml.YAMLError as e:
+                # Invalid YAML - re-raise with more context
+                raise ValueError(f"Invalid YAML in {config_name}.yaml: {str(e)}")
+        
+        # Load optional files if they exist
+        for config_name in optional_files:
+            try:
+                all_configs[config_name] = self.load(config_name)
+            except FileNotFoundError:
+                # Optional config doesn't exist - return empty dict
+                all_configs[config_name] = {}
 
         return all_configs
 

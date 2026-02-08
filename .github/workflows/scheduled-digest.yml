@@ -55,6 +55,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 📂 Restore sent articles cache
+        uses: actions/cache@v4
+        with:
+          path: .khabri_cache
+          key: khabri-digest-sent-${{ github.run_id }}
+          restore-keys: |
+            khabri-digest-sent-
+
       - name: 🕐 Determine digest type
         id: digest-type
         run: |
@@ -102,13 +110,19 @@ jobs:
         run: |
           python scripts/github_digest_runner.py notify email
         env:
-          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
-          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
-          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_TO }}
           DIGEST_TYPE: ${{ steps.digest-type.outputs.type }}
+
+      - name: 💾 Save sent articles cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .khabri_cache
+          key: khabri-digest-sent-${{ github.run_id }}
 
       - name: 📊 Log Results
         if: always()

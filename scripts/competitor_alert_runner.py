@@ -18,8 +18,12 @@ import json
 import asyncio
 import logging
 import hashlib
-from datetime import datetime, timedelta
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# IST timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 import feedparser
 import aiohttp
@@ -39,10 +43,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger('CompetitorAlert')
 
-# Temp files
-ARTICLES_FILE = '/tmp/competitor_articles.json'
-PROCESSED_FILE = '/tmp/competitor_processed.json'
-SEEN_FILE = '/tmp/competitor_seen.json'
+# Temp files - use tempfile module for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+ARTICLES_FILE = os.path.join(_temp_dir, 'competitor_articles.json')
+PROCESSED_FILE = os.path.join(_temp_dir, 'competitor_processed.json')
+
+# Persistent sent tracking
+CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
+SEEN_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'competitor_seen.json')
 
 # Config file path
 CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'sources.yaml'
@@ -70,17 +78,39 @@ def load_competitors():
 
 
 def load_seen_articles():
-    """Load previously seen article IDs"""
-    if os.path.exists(SEEN_FILE):
-        with open(SEEN_FILE, 'r') as f:
-            return set(json.load(f))
+    """Load previously seen article IDs from persistent cache"""
+    try:
+        cache_dir = os.path.dirname(SEEN_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if os.path.exists(SEEN_FILE):
+            with open(SEEN_FILE, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return set(data)
+                return set(data.get('ids', []))
+    except Exception as e:
+        logger.warning(f"Could not load seen articles: {e}")
     return set()
 
 
 def save_seen_articles(seen_ids):
-    """Save seen article IDs"""
-    with open(SEEN_FILE, 'w') as f:
-        json.dump(list(seen_ids), f)
+    """Save seen article IDs with timestamp"""
+    try:
+        cache_dir = os.path.dirname(SEEN_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        ids_list = list(seen_ids)[-300:]  # Keep last 300
+
+        with open(SEEN_FILE, 'w') as f:
+            json.dump({
+                'ids': ids_list,
+                'updated': datetime.now(IST).isoformat(),
+                'count': len(ids_list)
+            }, f, indent=2)
+        logger.info(f"Saved {len(ids_list)} seen article IDs")
+    except Exception as e:
+        logger.error(f"Could not save seen articles: {e}")
 
 
 def scrape_rss_for_competitor(name, url):
@@ -321,8 +351,8 @@ async def send_competitor_alert():
 
 def format_competitor_alert(result):
     """Format competitor alert message"""
-    now = datetime.now()
-    time_str = now.strftime('%I:%M %p')
+    now_ist = datetime.now(IST)
+    time_str = now_ist.strftime('%I:%M %p')
 
     new_count = result.get('new_count', 0)
     by_competitor = result.get('by_competitor', {})

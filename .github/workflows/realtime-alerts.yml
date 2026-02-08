@@ -41,6 +41,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser aiohttp pyyaml
 
+      - name: 📂 Restore sent articles cache
+        uses: actions/cache@v4
+        with:
+          path: .khabri_cache
+          key: khabri-realtime-sent-${{ github.run_id }}
+          restore-keys: |
+            khabri-realtime-sent-
+
       - name: ⚡ Scrape Breaking News
         run: |
           python scripts/realtime_alert_runner.py scrape
@@ -55,6 +63,13 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: 💾 Save sent articles cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .khabri_cache
+          key: khabri-realtime-sent-${{ github.run_id }}
 
       - name: 📊 Log Results
         if: always()

@@ -6,6 +6,7 @@ Uses BeautifulSoup for HTML parsing and respects rate limiting.
 """
 
 import hashlib
+import logging
 import time
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -13,6 +14,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.config import ConfigManager
+
+logger = logging.getLogger(__name__)
 
 
 class NewsScraper:
@@ -34,6 +37,21 @@ class NewsScraper:
             'User-Agent': 'MagicBricks-NewsBot/1.0 (News Intelligence System)'
         })
         self.last_request_time = {}
+
+    def close(self):
+        """Close the requests session to free resources."""
+        if self.session:
+            self.session.close()
+            logger.debug("NewsScraper session closed")
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures session is closed."""
+        self.close()
+        return False
 
     def _generate_id(self, url: str) -> str:
         """Generate unique ID from URL using hash."""
@@ -136,10 +154,10 @@ class NewsScraper:
             return [news_item]
 
         except requests.RequestException as e:
-            print(f"Error scraping {source_id} ({url}): {e}")
+            logger.error(f"Error scraping {source_id} ({url}): {e}")
             return []
         except Exception as e:
-            print(f"Unexpected error scraping {source_id}: {e}")
+            logger.error(f"Unexpected error scraping {source_id}: {e}")
             return []
 
     def scrape_all(self) -> List[Dict]:

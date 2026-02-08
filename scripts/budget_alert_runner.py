@@ -18,6 +18,7 @@ import json
 import asyncio
 import logging
 import hashlib
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -38,14 +39,117 @@ logging.basicConfig(
 )
 logger = logging.getLogger('BudgetAlert')
 
-# Temp files
-ARTICLES_FILE = '/tmp/budget_articles.json'
-PROCESSED_FILE = '/tmp/budget_processed.json'
-SENT_FILE = '/tmp/budget_sent.json'  # Track already sent articles
+# Temp files - use tempfile module for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+ARTICLES_FILE = os.path.join(_temp_dir, 'budget_articles.json')
+PROCESSED_FILE = os.path.join(_temp_dir, 'budget_processed.json')
 
-# REAL ESTATE & INFRASTRUCTURE focused keywords ONLY
-# Must match at least one of these to be included
-MUST_HAVE_KEYWORDS = [
+# Persistent sent tracking - use environment variable or file in repo
+# GitHub Actions will pass SENT_CACHE_DIR if available
+CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
+SENT_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'budget_sent.json')
+
+# =============================================================================
+# ACTUAL BUDGET ANNOUNCEMENT KEYWORDS
+# Focus on what WAS announced, not speculation about what WILL be announced
+# =============================================================================
+
+# Keywords indicating ACTUAL announcements (not speculation)
+ANNOUNCEMENT_KEYWORDS = [
+    'announced',
+    'announces',
+    'declared',
+    'unveils',
+    'unveiled',
+    'proposed',
+    'proposes',
+    'allocates',
+    'allocated',
+    'allocation',
+    'hiked',
+    'raised',
+    'reduced',
+    'cut',
+    'increased',
+    'decreased',
+    'extended',
+    'launched',
+    'introduced',
+    'revised',
+    'changed',
+    'approved',
+    'sanctioned',
+    'crore allocated',
+    'lakh crore',
+    'budget outlay',
+    'tax relief',
+    'tax benefit',
+    'deduction limit',
+    'exemption limit',
+]
+
+# EXCLUDE these speculation/wishlist keywords (STRICT FILTERING)
+SPECULATION_KEYWORDS = [
+    # Questions - NOT announcements
+    'will real estate',
+    'will housing',
+    'will get',
+    'can we expect',
+    'what to expect',
+    'will it get',
+    '?',  # Questions in title
+    # Wishlist/demands - NOT announcements
+    'key demands',
+    'demands of',
+    'demands from',
+    'wishlist',
+    'expectations from',
+    'hopes for',
+    'seeking',
+    'seeks',
+    'urges',
+    'requests',
+    'wants from',
+    'push for',
+    'appeal',
+    'looking for',
+    'need from',
+    'wants',
+    # Market reaction/analysis - NOT announcements
+    'shares to benefit',
+    'stocks to buy',
+    'stocks to watch',
+    'benefit from',
+    'impact on stocks',
+    'market reaction',
+    # Speculation words
+    'may announce',
+    'likely to',
+    'expected to',
+    'could announce',
+    'might propose',
+    'anticipate',
+    'speculation',
+    'may get',
+    'could get',
+    'might get',
+    # Pre-budget content
+    'preview',
+    'ahead of budget',
+    'before budget',
+    'pre-budget',
+    'budget eve',
+    'on the eve',
+    # Opinion/should articles
+    'should announce',
+    'must announce',
+    'needs to announce',
+    'should focus',
+    'must focus',
+]
+
+# REAL ESTATE & INFRASTRUCTURE - MUST have at least one
+REAL_ESTATE_KEYWORDS = [
     'real estate',
     'housing',
     'property',
@@ -65,7 +169,6 @@ MUST_HAVE_KEYWORDS = [
     'commercial property',
     'realty',
     'home buyer',
-    'rent',
     'rental',
     'gst housing',
     'capital gains property',
@@ -76,75 +179,104 @@ MUST_HAVE_KEYWORDS = [
     'highway',
     'expressway',
     'airport',
-    'dlf',
-    'godrej properties',
-    'oberoi realty',
-    'prestige',
-    'sobha',
-    'brigade',
+    'housing sector',
+    'real estate sector',
+    'property tax',
+    'home buyers',
 ]
 
-# Secondary keywords (boost score but not required)
-BOOST_KEYWORDS = [
-    'budget 2026',
-    'union budget',
-    'finance minister',
-    'nirmala sitharaman',
-    'tax rebate',
-    'section 80c',
-    'hra',
-    'interest rate',
-    'rbi',
+# Boost for specific amounts/allocations (indicates real announcement)
+AMOUNT_PATTERNS = [
+    '₹',
+    'crore',
+    'lakh crore',
+    'billion',
+    'rs ',
+    'rs.',
+    'inr',
+    '%',
+    'percent',
 ]
 
 
 def load_sent_articles():
-    """Load previously sent article IDs"""
-    if os.path.exists(SENT_FILE):
-        with open(SENT_FILE, 'r') as f:
-            return set(json.load(f))
+    """Load previously sent article IDs from persistent cache"""
+    try:
+        # Ensure cache directory exists
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if os.path.exists(SENT_FILE):
+            with open(SENT_FILE, 'r') as f:
+                data = json.load(f)
+                # Handle both old format (list) and new format (dict with timestamp)
+                if isinstance(data, list):
+                    return set(data)
+                return set(data.get('ids', []))
+    except Exception as e:
+        logger.warning(f"Could not load sent articles: {e}")
     return set()
 
 
 def save_sent_articles(sent_ids):
-    """Save sent article IDs"""
-    with open(SENT_FILE, 'w') as f:
-        json.dump(list(sent_ids), f)
+    """Save sent article IDs with timestamp for cleanup"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        # Keep only last 200 IDs to prevent bloat
+        ids_list = list(sent_ids)[-200:]
+
+        with open(SENT_FILE, 'w') as f:
+            json.dump({
+                'ids': ids_list,
+                'updated': datetime.now(IST).isoformat(),
+                'count': len(ids_list)
+            }, f, indent=2)
+        logger.info(f"Saved {len(ids_list)} sent article IDs")
+    except Exception as e:
+        logger.error(f"Could not save sent articles: {e}")
 
 
 def scrape_budget_news():
     """Scrape budget-related news"""
     logger.info("🏛️ Scraping Budget 2026 news...")
 
-    # REAL ESTATE & INFRASTRUCTURE focused RSS feeds
+    # RSS feeds for ACTUAL BUDGET ANNOUNCEMENTS
+    # Using "when:1d" to get only today's news
+    # Focus on past-tense verbs: "announced", "allocated", "hiked", "cut"
     rss_feeds = [
         {
-            'name': 'Budget Real Estate',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+real+estate+property&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'FM Announces Housing',
+            'url': 'https://news.google.com/rss/search?q=sitharaman+announces+housing+crore+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Housing',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+housing+home+loan&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Budget Housing Allocated',
+            'url': 'https://news.google.com/rss/search?q=budget+2026+housing+allocated+crore+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget PMAY',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+PMAY+affordable+housing&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'PMAY Allocation Announced',
+            'url': 'https://news.google.com/rss/search?q=PMAY+allocation+announced+crore+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Infrastructure',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+infrastructure+metro+highway&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Infrastructure Allocation',
+            'url': 'https://news.google.com/rss/search?q=budget+infrastructure+lakh+crore+allocated+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Stamp Duty',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+stamp+duty+property+tax&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Home Loan Tax Benefit',
+            'url': 'https://news.google.com/rss/search?q=budget+home+loan+tax+deduction+increased+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Realty',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+realty+builder+developer&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Real Estate Budget Highlights',
+            'url': 'https://news.google.com/rss/search?q=budget+real+estate+announced+highlights+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Budget Smart City',
-            'url': 'https://news.google.com/rss/search?q=budget+2026+smart+city+urban+development&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Stamp Duty Changes',
+            'url': 'https://news.google.com/rss/search?q=budget+stamp+duty+reduced+changed+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Metro Highway Sanctioned',
+            'url': 'https://news.google.com/rss/search?q=budget+metro+highway+crore+sanctioned+approved+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         }
     ]
 
@@ -189,6 +321,33 @@ def scrape_budget_news():
     return all_articles
 
 
+def is_within_event_window(published_str):
+    """Check if article was published during event window (11 AM - 2 PM IST today)"""
+    try:
+        # Parse the published time
+        published = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
+
+        # Get current IST time
+        now_ist = datetime.now(IST)
+
+        # Event window: 11 AM - 2 PM IST on event day
+        event_start = now_ist.replace(hour=10, minute=30, second=0, microsecond=0)  # 10:30 AM IST (30 min before)
+        event_end = now_ist.replace(hour=14, minute=30, second=0, microsecond=0)    # 2:30 PM IST (30 min after)
+
+        # If published time is naive (no timezone), assume IST
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=IST)
+
+        # Check if within event window (allow articles from last 3 hours during event)
+        three_hours_ago = now_ist - timedelta(hours=3)
+
+        return published >= three_hours_ago
+    except Exception as e:
+        logger.warning(f"Could not parse date: {published_str} - {e}")
+        # If we can't parse, include it (to avoid missing important news)
+        return True
+
+
 def process_budget_articles():
     """Filter for budget-relevant articles only"""
     logger.info("Processing budget articles...")
@@ -220,22 +379,46 @@ def process_budget_articles():
             continue
         seen_titles.add(title_key)
 
-        # Check for REAL ESTATE / INFRASTRUCTURE keywords (REQUIRED)
-        text = (article.get('title', '') + ' ' + article.get('content', '')).lower()
-
-        # MUST have at least one real estate/infrastructure keyword
-        must_have_matches = [kw for kw in MUST_HAVE_KEYWORDS if kw in text]
-
-        if not must_have_matches:
-            # Skip if no real estate/infrastructure keywords
+        # STEP 0: Check if article is from event window (recent articles only)
+        published_at = article.get('published_at', '')
+        if not is_within_event_window(published_at):
+            logger.debug(f"Skipping old article: {article.get('title', '')[:50]}")
             continue
 
-        # Calculate score with boost keywords
-        boost_matches = [kw for kw in BOOST_KEYWORDS if kw in text]
-        relevance_score = len(must_have_matches) * 2 + len(boost_matches)
+        # Check keywords in title and content
+        title = article.get('title', '').lower()
+        content = article.get('content', '').lower()
+        text = title + ' ' + content
+
+        # STEP 1: MUST have real estate/infrastructure keyword
+        real_estate_matches = [kw for kw in REAL_ESTATE_KEYWORDS if kw in text]
+        if not real_estate_matches:
+            continue  # Skip non-real estate news
+
+        # STEP 2: EXCLUDE speculation articles (STRICT CHECK)
+        is_speculation = any(kw in text for kw in SPECULATION_KEYWORDS)
+        if is_speculation:
+            logger.info(f"Skipping speculation: {title[:60]}")
+            continue  # Skip speculation/preview articles
+
+        # STEP 3: MUST have announcement indicator (strict for event alerts)
+        announcement_matches = [kw for kw in ANNOUNCEMENT_KEYWORDS if kw in text]
+        has_amounts = any(kw in text for kw in AMOUNT_PATTERNS)
+
+        # During event: REQUIRE announcement keywords or amounts
+        if not announcement_matches and not has_amounts:
+            logger.info(f"Skipping non-announcement: {title[:60]}")
+            continue  # Skip if no announcement indicator
+
+        # Calculate relevance score
+        relevance_score = 0
+        relevance_score += len(real_estate_matches) * 2
+        relevance_score += len(announcement_matches) * 3
+        relevance_score += 5 if has_amounts else 0
 
         article['relevance_score'] = relevance_score
-        article['matched_keywords'] = must_have_matches[:5]  # Show real estate keywords
+        article['is_announcement'] = True
+        article['matched_keywords'] = real_estate_matches[:3] + announcement_matches[:2]
         processed.append(article)
 
     # Sort by relevance
@@ -342,12 +525,12 @@ def send_email_alert():
     """Send budget alert via Email"""
     logger.info("Sending Budget alert via Email...")
 
-    smtp_host = os.getenv('EMAIL_SMTP_HOST')
-    smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
-    username = os.getenv('EMAIL_USERNAME')
-    password = os.getenv('EMAIL_PASSWORD')
-    from_email = os.getenv('EMAIL_FROM')
-    to_email = os.getenv('EMAIL_TO')
+    smtp_host = os.getenv('SMTP_HOST')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    username = os.getenv('SMTP_USERNAME')
+    password = os.getenv('SMTP_PASSWORD')
+    from_email = os.getenv('SMTP_USERNAME')
+    to_email = os.getenv('EMAIL_RECIPIENT')
 
     if not all([smtp_host, username, password, from_email, to_email]):
         logger.error("Email credentials not set!")

@@ -6,6 +6,7 @@ data for real estate transaction insights and market intelligence.
 """
 
 import hashlib
+import logging
 import time
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -13,6 +14,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.config import ConfigManager
+
+logger = logging.getLogger(__name__)
 
 
 class IGRSScraper:
@@ -34,6 +37,21 @@ class IGRSScraper:
             'User-Agent': 'MagicBricks-IGRSBot/1.0 (Real Estate Data Analysis)'
         })
         self.last_request_time = {}
+
+    def close(self):
+        """Close the requests session to free resources."""
+        if self.session:
+            self.session.close()
+            logger.debug("IGRSScraper session closed")
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures session is closed."""
+        self.close()
+        return False
 
     def _generate_id(self, url: str) -> str:
         """Generate unique ID from URL using hash."""
@@ -173,10 +191,10 @@ class IGRSScraper:
             return news_items
 
         except requests.RequestException as e:
-            print(f"Error scraping IGRS source {source_id} ({url}): {e}")
+            logger.error(f"Error scraping IGRS source {source_id} ({url}): {e}")
             return []
         except Exception as e:
-            print(f"Unexpected error scraping IGRS source {source_id}: {e}")
+            logger.error(f"Unexpected error scraping IGRS source {source_id}: {e}")
             return []
 
     def scrape_all_igrs(self) -> List[Dict]:

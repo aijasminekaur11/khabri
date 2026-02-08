@@ -9,7 +9,7 @@ import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import requests
-from .base_notifier import BaseNotifier
+from .base_notifier import BaseNotifier, NotificationError
 
 
 logger = logging.getLogger(__name__)
@@ -277,7 +277,7 @@ class TelegramNotifier(BaseNotifier):
 
         except Exception as e:
             logger.error(f"Error sending Telegram digest: {e}")
-            return False
+            raise NotificationError(f"Failed to send Telegram digest", e)
 
     def send_alert(self, news: Dict[str, Any]) -> bool:
         """
@@ -295,7 +295,7 @@ class TelegramNotifier(BaseNotifier):
 
         except Exception as e:
             logger.error(f"Error sending Telegram alert: {e}")
-            return False
+            raise NotificationError(f"Failed to send Telegram alert", e)
 
     def health_check(self) -> bool:
         """

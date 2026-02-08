@@ -21,8 +21,12 @@ import json
 import asyncio
 import logging
 import hashlib
-from datetime import datetime
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# IST timezone (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # We'll use feedparser directly (it's a simple dependency)
 import feedparser
@@ -35,40 +39,100 @@ logging.basicConfig(
 )
 logger = logging.getLogger('GitHubDigest')
 
-# Temp file to store scraped articles between steps
-ARTICLES_FILE = '/tmp/khabri_articles.json'
-PROCESSED_FILE = '/tmp/khabri_processed.json'
+# Temp file to store scraped articles between steps - use tempfile for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+ARTICLES_FILE = os.path.join(_temp_dir, 'khabri_articles.json')
+PROCESSED_FILE = os.path.join(_temp_dir, 'khabri_processed.json')
+
+# Persistent sent tracking to avoid duplicate notifications
+CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
+SENT_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'digest_sent.json')
+
+def load_sent_articles():
+    """Load previously sent article IDs from persistent cache"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if os.path.exists(SENT_FILE):
+            with open(SENT_FILE, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return set(data)
+                return set(data.get('ids', []))
+    except Exception as e:
+        logger.warning(f"Could not load sent articles: {e}")
+    return set()
+
+
+def save_sent_articles(sent_ids):
+    """Save sent article IDs with timestamp"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        ids_list = list(sent_ids)[-300:]  # Keep last 300 for digest
+
+        with open(SENT_FILE, 'w') as f:
+            json.dump({
+                'ids': ids_list,
+                'updated': datetime.now(IST).isoformat(),
+                'count': len(ids_list)
+            }, f, indent=2)
+        logger.info(f"Saved {len(ids_list)} sent article IDs")
+    except Exception as e:
+        logger.error(f"Could not save sent articles: {e}")
+
+
+# REAL ESTATE keywords - articles MUST contain at least one
+REAL_ESTATE_KEYWORDS = [
+    'real estate', 'property', 'housing', 'home loan', 'affordable housing',
+    'pmay', 'pradhan mantri awas', 'rera', 'stamp duty', 'builder', 'developer',
+    'residential', 'commercial property', 'realty', 'home buyer', 'rental',
+    'apartment', 'flat', 'plot', 'land', 'construction', 'infrastructure',
+    'metro', 'highway', 'airport', 'smart city', 'dlf', 'godrej properties',
+    'oberoi realty', 'prestige', 'sobha', 'brigade', 'lodha', 'mahindra lifespace',
+    'home loan rate', 'emi', 'mortgage', 'housing finance', 'property prices',
+]
 
 
 def scrape_rss_feeds():
     """Scrape news from RSS feeds using feedparser directly"""
     logger.info("Starting news scraping...")
 
-    # RSS feeds to scrape
+    # RSS feeds to scrape - REAL ESTATE & INFRASTRUCTURE FOCUSED
     rss_feeds = [
         {
-            'name': 'Google News - Real Estate',
-            'url': 'https://news.google.com/rss/search?q=indian+real+estate&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Real Estate India',
+            'url': 'https://news.google.com/rss/search?q=indian+real+estate+property&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Google News - Property',
-            'url': 'https://news.google.com/rss/search?q=india+property+prices&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Property Prices',
+            'url': 'https://news.google.com/rss/search?q=india+property+prices+housing+market&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Google News - Housing',
-            'url': 'https://news.google.com/rss/search?q=india+housing+market&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Housing PMAY',
+            'url': 'https://news.google.com/rss/search?q=india+housing+PMAY+affordable&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Google News - RERA',
-            'url': 'https://news.google.com/rss/search?q=RERA+real+estate&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'RERA Builder',
+            'url': 'https://news.google.com/rss/search?q=RERA+real+estate+builder&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Google News - Mumbai Property',
-            'url': 'https://news.google.com/rss/search?q=mumbai+property&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Metro Property',
+            'url': 'https://news.google.com/rss/search?q=mumbai+delhi+bangalore+property+real+estate&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Google News - Home Loan',
-            'url': 'https://news.google.com/rss/search?q=india+home+loan+interest+rate&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Home Loan',
+            'url': 'https://news.google.com/rss/search?q=home+loan+interest+rate+EMI&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Infrastructure',
+            'url': 'https://news.google.com/rss/search?q=india+infrastructure+metro+highway+smart+city&hl=en-IN&gl=IN&ceid=IN:en'
+        },
+        {
+            'name': 'Real Estate Developers',
+            'url': 'https://news.google.com/rss/search?q=DLF+Godrej+Oberoi+Prestige+real+estate&hl=en-IN&gl=IN&ceid=IN:en'
         }
     ]
 
@@ -136,11 +200,19 @@ def process_articles():
             json.dump([], f)
         return []
 
+    # Load already sent articles to avoid duplicates
+    sent_ids = load_sent_articles()
+    logger.info(f"Loaded {len(sent_ids)} previously sent article IDs")
+
     # Simple deduplication by title similarity
     seen_titles = set()
     processed = []
 
     for article in all_articles:
+        # Skip if already sent in previous digests
+        if article.get('id') in sent_ids:
+            continue
+
         # Normalize title for comparison
         title_key = article.get('title', '').lower()[:50]
 
@@ -152,15 +224,20 @@ def process_articles():
             content_lower = article.get('content', '').lower()
             text = title_lower + ' ' + content_lower
 
-            if any(kw in text for kw in ['rera', 'regulation', 'policy', 'government']):
+            # MUST have at least one real estate keyword
+            has_real_estate = any(kw in text for kw in REAL_ESTATE_KEYWORDS)
+            if not has_real_estate:
+                continue  # Skip non-real estate articles
+
+            if any(kw in text for kw in ['rera', 'regulation', 'policy', 'government', 'pmay']):
                 article['category'] = 'policy'
             elif any(kw in text for kw in ['price', 'rate', 'market', 'demand', 'sales']):
                 article['category'] = 'market_updates'
-            elif any(kw in text for kw in ['metro', 'infrastructure', 'airport', 'highway']):
+            elif any(kw in text for kw in ['metro', 'infrastructure', 'airport', 'highway', 'smart city']):
                 article['category'] = 'infrastructure'
-            elif any(kw in text for kw in ['launch', 'new project', 'upcoming']):
+            elif any(kw in text for kw in ['launch', 'new project', 'upcoming', 'new development']):
                 article['category'] = 'launches'
-            elif any(kw in text for kw in ['loan', 'emi', 'interest', 'rbi']):
+            elif any(kw in text for kw in ['loan', 'emi', 'interest', 'rbi', 'mortgage']):
                 article['category'] = 'finance'
 
             processed.append(article)
@@ -212,6 +289,13 @@ async def send_telegram():
         async with session.post(url, json=payload) as response:
             if response.status == 200:
                 logger.info(f"Telegram digest sent! ({len(articles)} articles)")
+
+                # Mark articles as sent to avoid duplicates
+                sent_ids = load_sent_articles()
+                for article in articles:
+                    if article.get('id'):
+                        sent_ids.add(article['id'])
+                save_sent_articles(sent_ids)
             else:
                 error = await response.text()
                 logger.error(f"Telegram send failed: {error}")
@@ -223,12 +307,12 @@ async def send_email():
     logger.info("Sending Email notification...")
 
     # Get credentials from environment
-    smtp_host = os.getenv('EMAIL_SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
-    username = os.getenv('EMAIL_USERNAME')
-    password = os.getenv('EMAIL_PASSWORD')
-    sender = os.getenv('EMAIL_FROM', username)
-    recipient = os.getenv('EMAIL_TO')
+    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    username = os.getenv('SMTP_USERNAME')
+    password = os.getenv('SMTP_PASSWORD')
+    sender = os.getenv('SMTP_USERNAME')
+    recipient = os.getenv('EMAIL_RECIPIENT')
     digest_type = os.getenv('DIGEST_TYPE', 'morning')
 
     if not all([username, password, recipient]):
@@ -275,9 +359,9 @@ async def send_email():
 
 def format_telegram_message(articles, digest_type):
     """Format articles for Telegram"""
-    now = datetime.now()
-    date_str = now.strftime('%B %d, %Y')
-    time_str = now.strftime('%I:%M %p')
+    now_ist = datetime.now(IST)
+    date_str = now_ist.strftime('%B %d, %Y')
+    time_str = now_ist.strftime('%I:%M %p')
 
     header = "🌅 Morning" if digest_type == "morning" else "🌆 Evening"
 
@@ -327,8 +411,8 @@ def format_telegram_message(articles, digest_type):
 
 def format_email_message(articles, digest_type):
     """Format articles as HTML email"""
-    now = datetime.now()
-    date_str = now.strftime('%B %d, %Y')
+    now_ist = datetime.now(IST)
+    date_str = now_ist.strftime('%B %d, %Y')
 
     header = "🌅 Morning" if digest_type == "morning" else "🌆 Evening"
 

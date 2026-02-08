@@ -18,6 +18,7 @@ import json
 import asyncio
 import logging
 import hashlib
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -38,12 +39,92 @@ logging.basicConfig(
 )
 logger = logging.getLogger('RBIAlert')
 
-# Temp files
-ARTICLES_FILE = '/tmp/rbi_articles.json'
-PROCESSED_FILE = '/tmp/rbi_processed.json'
-SENT_FILE = '/tmp/rbi_sent.json'  # Track already sent articles
+# Temp files - use tempfile module for cross-platform compatibility
+_temp_dir = tempfile.gettempdir()
+ARTICLES_FILE = os.path.join(_temp_dir, 'rbi_articles.json')
+PROCESSED_FILE = os.path.join(_temp_dir, 'rbi_processed.json')
 
-# RBI-specific keywords
+# Persistent sent tracking
+CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
+SENT_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'rbi_sent.json')
+
+# =============================================================================
+# RBI POLICY ACTUAL DECISION KEYWORDS
+# Focus on what WAS decided, not speculation
+# =============================================================================
+
+# Keywords indicating ACTUAL RBI decisions
+DECISION_KEYWORDS = [
+    'cuts repo',
+    'hikes repo',
+    'keeps repo',
+    'unchanged',
+    'raised to',
+    'reduced to',
+    'cut by',
+    'hiked by',
+    'basis points',
+    'bps',
+    'announces',
+    'announced',
+    'decides',
+    'decided',
+    'maintains',
+    'slashes',
+    'increases',
+    'decreases',
+    'policy rate',
+    'rate decision',
+    'mpc decision',
+    'mpc announces',
+    'governor announces',
+]
+
+# EXCLUDE speculation/prediction articles (STRICT)
+RBI_SPECULATION = [
+    # Speculation verbs
+    'may cut',
+    'may hike',
+    'may keep',
+    'likely to',
+    'expected to',
+    'could cut',
+    'could hike',
+    'might raise',
+    'might reduce',
+    # Questions
+    'will rbi',
+    'will mpc',
+    '?',
+    # Prediction/forecast
+    'speculation',
+    'anticipate',
+    'forecast',
+    'prediction',
+    'expects',
+    'expecting',
+    'polls suggest',
+    # Pre-event
+    'ahead of mpc',
+    'ahead of rbi',
+    'before rbi',
+    'before mpc',
+    'what to expect',
+    'preview',
+    # Wishlist/demands
+    'demands',
+    'seeks',
+    'wants',
+    'urges',
+    'appeals',
+    'hopes',
+    # Market speculation
+    'stocks to buy',
+    'shares to benefit',
+    'benefit from',
+]
+
+# RBI policy keywords
 RBI_KEYWORDS = [
     'rbi',
     'reserve bank',
@@ -53,69 +134,102 @@ RBI_KEYWORDS = [
     'monetary policy',
     'mpc',
     'shaktikanta das',
-    'home loan rate',
-    'emi',
     'lending rate',
-    'inflation',
-    'cpi',
-    'liquidity',
     'credit policy',
     'bank rate',
-    'cash reserve ratio',
-    'crr',
-    'slr',
-    'housing finance',
-    'mortgage rate',
-    'real estate finance',
-    'property loan',
+]
+
+# MUST HAVE: Real estate / housing impact
+REAL_ESTATE_MUST_HAVE = [
+    'home loan',
+    'housing',
+    'real estate',
+    'property',
+    'emi',
+    'mortgage',
     'home buyer',
     'affordability',
+    'housing finance',
+    'property loan',
+    'residential',
+    'home ownership',
+    'housing market',
+    'real estate sector',
+    'realty',
+    'housing demand',
+    'home prices',
+    'property prices',
+    'emi change',
+    'emi impact',
+    'loan rate',
 ]
 
 
 def load_sent_articles():
-    """Load previously sent article IDs"""
-    if os.path.exists(SENT_FILE):
-        with open(SENT_FILE, 'r') as f:
-            return set(json.load(f))
+    """Load previously sent article IDs from persistent cache"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if os.path.exists(SENT_FILE):
+            with open(SENT_FILE, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return set(data)
+                return set(data.get('ids', []))
+    except Exception as e:
+        logger.warning(f"Could not load sent articles: {e}")
     return set()
 
 
 def save_sent_articles(sent_ids):
-    """Save sent article IDs"""
-    with open(SENT_FILE, 'w') as f:
-        json.dump(list(sent_ids), f)
+    """Save sent article IDs with timestamp"""
+    try:
+        cache_dir = os.path.dirname(SENT_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        ids_list = list(sent_ids)[-200:]
+
+        with open(SENT_FILE, 'w') as f:
+            json.dump({
+                'ids': ids_list,
+                'updated': datetime.now(IST).isoformat(),
+                'count': len(ids_list)
+            }, f, indent=2)
+        logger.info(f"Saved {len(ids_list)} sent article IDs")
+    except Exception as e:
+        logger.error(f"Could not save sent articles: {e}")
 
 
 def scrape_rbi_news():
     """Scrape RBI-related news"""
     logger.info("🏦 Scraping RBI Policy news...")
 
-    # RBI-specific RSS feeds
+    # RSS feeds for ACTUAL RBI DECISIONS (today only with when:1d)
     rss_feeds = [
         {
-            'name': 'RBI Policy',
-            'url': 'https://news.google.com/rss/search?q=RBI+policy+repo+rate&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'RBI Cuts/Hikes Repo',
+            'url': 'https://news.google.com/rss/search?q=RBI+cuts+hikes+repo+rate+bps+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'RBI Interest Rate',
-            'url': 'https://news.google.com/rss/search?q=RBI+interest+rate+home+loan&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'MPC Announces Decision',
+            'url': 'https://news.google.com/rss/search?q=MPC+announces+decision+repo+rate+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'RBI MPC',
-            'url': 'https://news.google.com/rss/search?q=RBI+MPC+monetary+policy&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Home Loan EMI Impact',
+            'url': 'https://news.google.com/rss/search?q=home+loan+EMI+RBI+rate+cut+impact+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Home Loan EMI',
-            'url': 'https://news.google.com/rss/search?q=home+loan+EMI+rate+change&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'RBI Governor Announces',
+            'url': 'https://news.google.com/rss/search?q=RBI+governor+announces+policy+decision+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'RBI Governor',
-            'url': 'https://news.google.com/rss/search?q=RBI+governor+announcement&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Housing Finance Impact',
+            'url': 'https://news.google.com/rss/search?q=housing+finance+RBI+rate+decision+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         },
         {
-            'name': 'Housing Finance',
-            'url': 'https://news.google.com/rss/search?q=housing+finance+interest+rate&hl=en-IN&gl=IN&ceid=IN:en'
+            'name': 'Real Estate RBI Decision',
+            'url': 'https://news.google.com/rss/search?q=real+estate+RBI+decision+announces+when:1d&hl=en-IN&gl=IN&ceid=IN:en'
         }
     ]
 
@@ -160,6 +274,24 @@ def scrape_rbi_news():
     return all_articles
 
 
+def is_within_event_window(published_str):
+    """Check if article was published during/after event (recent only)"""
+    try:
+        published = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
+        now_ist = datetime.now(IST)
+
+        # If published time is naive, assume IST
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=IST)
+
+        # Only include articles from last 3 hours (during event)
+        three_hours_ago = now_ist - timedelta(hours=3)
+        return published >= three_hours_ago
+    except Exception as e:
+        logger.warning(f"Could not parse date: {published_str} - {e}")
+        return True  # Include if can't parse
+
+
 def process_rbi_articles():
     """Filter for RBI-relevant articles only"""
     logger.info("Processing RBI articles...")
@@ -191,15 +323,50 @@ def process_rbi_articles():
             continue
         seen_titles.add(title_key)
 
+        # STEP 0: Only recent articles (during event window)
+        published_at = article.get('published_at', '')
+        if not is_within_event_window(published_at):
+            continue
+
         # Check for RBI keywords
-        text = (article.get('title', '') + ' ' + article.get('content', '')).lower()
+        title = article.get('title', '').lower()
+        content = article.get('content', '').lower()
+        text = title + ' ' + content
 
-        relevance_score = sum(1 for kw in RBI_KEYWORDS if kw in text)
+        # STEP 1: MUST have real estate/housing related keyword
+        has_real_estate = any(kw in text for kw in REAL_ESTATE_MUST_HAVE)
+        if not has_real_estate:
+            continue  # Skip non-real estate RBI news
 
-        if relevance_score >= 1:  # At least 1 keyword match
-            article['relevance_score'] = relevance_score
-            article['matched_keywords'] = [kw for kw in RBI_KEYWORDS if kw in text]
-            processed.append(article)
+        # STEP 2: EXCLUDE speculation articles (STRICT)
+        is_speculation = any(kw in text for kw in RBI_SPECULATION)
+        if is_speculation:
+            logger.info(f"Skipping speculation: {title[:60]}")
+            continue  # Skip speculation articles
+
+        # STEP 3: MUST have decision indicator (strict for event)
+        decision_matches = [kw for kw in DECISION_KEYWORDS if kw in text]
+        has_percentage = '%' in text or 'basis points' in text or 'bps' in text
+
+        # During event: REQUIRE decision keywords or percentages
+        if not decision_matches and not has_percentage:
+            logger.info(f"Skipping non-decision: {title[:60]}")
+            continue
+
+        # Calculate relevance score
+        rbi_score = sum(1 for kw in RBI_KEYWORDS if kw in text)
+        real_estate_score = sum(1 for kw in REAL_ESTATE_MUST_HAVE if kw in text)
+        decision_score = len(decision_matches) * 3
+
+        relevance_score = rbi_score + real_estate_score * 2 + decision_score
+        relevance_score += 5 if has_percentage else 0
+
+        article['relevance_score'] = relevance_score
+        article['is_decision'] = True
+        matched = decision_matches[:2] if decision_matches else []
+        matched.extend([kw for kw in REAL_ESTATE_MUST_HAVE if kw in text][:2])
+        article['matched_keywords'] = matched
+        processed.append(article)
 
     # Sort by relevance
     processed.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
@@ -305,12 +472,12 @@ def send_email_alert():
     """Send RBI alert via Email"""
     logger.info("Sending RBI alert via Email...")
 
-    smtp_host = os.getenv('EMAIL_SMTP_HOST')
-    smtp_port = int(os.getenv('EMAIL_SMTP_PORT', 587))
-    username = os.getenv('EMAIL_USERNAME')
-    password = os.getenv('EMAIL_PASSWORD')
-    from_email = os.getenv('EMAIL_FROM')
-    to_email = os.getenv('EMAIL_TO')
+    smtp_host = os.getenv('SMTP_HOST')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    username = os.getenv('SMTP_USERNAME')
+    password = os.getenv('SMTP_PASSWORD')
+    from_email = os.getenv('SMTP_USERNAME')
+    to_email = os.getenv('EMAIL_RECIPIENT')
 
     if not all([smtp_host, username, password, from_email, to_email]):
         logger.error("Email credentials not set!")

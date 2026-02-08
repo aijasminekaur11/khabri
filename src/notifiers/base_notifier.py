@@ -7,6 +7,20 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 
 
+class NotificationError(Exception):
+    """Custom exception for notification failures"""
+    
+    def __init__(self, message: str, original_error: Exception = None):
+        super().__init__(message)
+        self.original_error = original_error
+        self.message = message
+    
+    def __str__(self):
+        if self.original_error:
+            return f"{self.message} - Caused by: {type(self.original_error).__name__}: {self.original_error}"
+        return self.message
+
+
 class BaseNotifier(ABC):
     """
     Abstract base class for all notifiers.

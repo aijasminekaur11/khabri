@@ -48,6 +48,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser aiohttp
 
+      - name: 📂 Restore sent articles cache
+        uses: actions/cache@v4
+        with:
+          path: .khabri_cache
+          key: khabri-budget-sent-${{ github.run_id }}
+          restore-keys: |
+            khabri-budget-sent-
+
       - name: 🏛️ Scrape Budget News
         run: |
           python scripts/budget_alert_runner.py scrape
@@ -68,12 +76,18 @@ jobs:
         run: |
           python scripts/budget_alert_runner.py notify email
         env:
-          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
-          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
-          EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_TO }}
+
+      - name: 💾 Save sent articles cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .khabri_cache
+          key: khabri-budget-sent-${{ github.run_id }}
 
       - name: 📊 Log Results
         if: always()

@@ -6,6 +6,7 @@ Generates CompetitorAlert objects when competitors publish content.
 """
 
 import hashlib
+import logging
 import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -13,6 +14,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.config import ConfigManager
+
+logger = logging.getLogger(__name__)
 
 
 class CompetitorTracker:
@@ -34,6 +37,21 @@ class CompetitorTracker:
         })
         self.last_request_time = {}
         self.tracked_articles = {}  # Store previously seen articles
+
+    def close(self):
+        """Close the requests session to free resources."""
+        if self.session:
+            self.session.close()
+            logger.debug("CompetitorTracker session closed")
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures session is closed."""
+        self.close()
+        return False
 
     def _generate_id(self, url: str) -> str:
         """Generate unique ID from URL using hash."""
@@ -194,10 +212,10 @@ class CompetitorTracker:
             return alerts
 
         except requests.RequestException as e:
-            print(f"Error tracking competitor {source_id} ({url}): {e}")
+            logger.error(f"Error tracking competitor {source_id} ({url}): {e}")
             return []
         except Exception as e:
-            print(f"Unexpected error tracking competitor {source_id}: {e}")
+            logger.error(f"Unexpected error tracking competitor {source_id}: {e}")
             return []
 
     def track_all_competitors(self, our_recent_content: Optional[List[Dict]] = None) -> List[Dict]:
