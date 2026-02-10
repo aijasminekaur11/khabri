@@ -24,7 +24,9 @@ jobs:
   validate-issue:
     name: ✅ Validate Issue
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'auto-fix') || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && startsWith(github.event.issue.title, '[Auto-Fix]'))
     outputs:
       should_proceed: ${{ steps.check.outputs.proceed }}
       issue_number: ${{ steps.check.outputs.issue_number }}
