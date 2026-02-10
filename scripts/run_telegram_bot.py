@@ -22,8 +22,13 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Load environment variables from .env file
-load_dotenv(project_root / '.env')
+# Load environment variables from .env file (only if file exists - not on Railway)
+env_file = project_root / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
+    print(f"📁 Loaded environment from .env file")
+else:
+    print(f"☁️  Using Railway environment variables")
 
 from src.notifiers.telegram_bot_handler import TelegramBotHandler
 

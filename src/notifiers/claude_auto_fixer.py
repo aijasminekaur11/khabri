@@ -27,8 +27,10 @@ class ClaudeAutoFixer:
 
         if not self.api_key:
             logger.warning("Anthropic API key not configured. Auto-fix disabled.")
+            logger.warning(f"Checked environment variable: ANTHROPIC_API_KEY = {os.getenv('ANTHROPIC_API_KEY')}")
             self.client = None
         else:
+            logger.info(f"Claude API initialized with key: {self.api_key[:20]}...")
             self.client = Anthropic(api_key=self.api_key)
 
     def analyze_issue(self, issue_title: str, issue_body: str, repo_context: Dict[str, Any] = None) -> Dict[str, Any]:
