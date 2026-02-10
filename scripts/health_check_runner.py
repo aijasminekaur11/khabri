@@ -14,6 +14,7 @@ Usage:
 import os
 import sys
 import json
+import html as html_module
 import asyncio
 import logging
 import tempfile
@@ -236,9 +237,12 @@ def format_health_report(report):
 
         for item in unhealthy:
             status_emoji = "❌" if item['status'] == 'error' else "⚠️"
-            lines.append(f"{status_emoji} <b>{item['name']}</b>")
-            lines.append(f"   Type: {item['type']}")
-            lines.append(f"   Error: {item['error']}")
+            name = html_module.escape(item['name'])
+            item_type = html_module.escape(item['type'])
+            error = html_module.escape(item['error'])
+            lines.append(f"{status_emoji} <b>{name}</b>")
+            lines.append(f"   Type: {item_type}")
+            lines.append(f"   Error: {error}")
             lines.append("")
 
     lines.append("━━━━━━━━━━━━━━━━━━━━")

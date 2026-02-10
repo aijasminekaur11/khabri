@@ -4,6 +4,7 @@ Sends HTML email notifications via SMTP
 """
 
 import os
+import html as html_module
 import logging
 import smtplib
 import time
@@ -328,10 +329,10 @@ class EmailNotifier(BaseNotifier):
                 <h2>🎯 Competitor Alerts</h2>
             """
             for alert in competitor_alerts:
-                competitor = alert.get('competitor', 'Unknown')
-                title = alert.get('article_title', 'No title')
-                url = alert.get('article_url', '#')
-                gaps = alert.get('gaps', [])
+                competitor = html_module.escape(alert.get('competitor', 'Unknown'))
+                title = html_module.escape(alert.get('article_title', 'No title'))
+                url = html_module.escape(alert.get('article_url', '#'), quote=True)
+                gaps = [html_module.escape(g) for g in alert.get('gaps', [])]
 
                 html += f"""
                 <div class="competitor-alert">
@@ -351,9 +352,9 @@ class EmailNotifier(BaseNotifier):
             """
 
             for item in items:
-                title = item.get('title', 'No title')
-                url = item.get('url', '#')
-                source = item.get('source', 'Unknown')
+                title = html_module.escape(item.get('title', 'No title'))
+                url = html_module.escape(item.get('url', '#'), quote=True)
+                source = html_module.escape(item.get('source', 'Unknown'))
                 impact = item.get('impact_level', 'LOW').lower()
                 score = item.get('signal_score', 0)
                 discover = item.get('discover_potential', 0)
@@ -361,15 +362,15 @@ class EmailNotifier(BaseNotifier):
                 keywords = item.get('keywords', [])
 
                 # Extract snippet
-                snippet = content[:200] + "..." if len(content) > 200 else content
+                snippet = html_module.escape(content[:200] + "..." if len(content) > 200 else content)
 
                 # Format keywords
                 kw_list = []
                 for kw in keywords[:5]:
                     if isinstance(kw, dict):
-                        kw_list.append(kw.get('keyword', ''))
+                        kw_list.append(html_module.escape(kw.get('keyword', '')))
                     else:
-                        kw_list.append(str(kw))
+                        kw_list.append(html_module.escape(str(kw)))
 
                 html += f"""
                 <div class="news-item {impact}">
@@ -408,9 +409,9 @@ class EmailNotifier(BaseNotifier):
         Returns:
             HTML string
         """
-        title = news.get('title', 'No title')
-        url = news.get('url', '#')
-        source = news.get('source', 'Unknown')
+        title = html_module.escape(news.get('title', 'No title'))
+        url = html_module.escape(news.get('url', '#'), quote=True)
+        source = html_module.escape(news.get('source', 'Unknown'))
         impact = news.get('impact_level', 'LOW')
         score = news.get('signal_score', 0)
         discover = news.get('discover_potential', 0)
@@ -419,13 +420,19 @@ class EmailNotifier(BaseNotifier):
         celebrity = news.get('celebrity_match')
         verified = news.get('verified', False)
 
+        # Escape content snippet
+        content_snippet = html_module.escape(content[:300] + '...' if len(content) > 300 else content)
+
+        # Escape celebrity if present
+        safe_celebrity = html_module.escape(celebrity) if celebrity else None
+
         # Extract keywords
         kw_list = []
         for kw in keywords[:5]:
             if isinstance(kw, dict):
-                kw_list.append(kw.get('keyword', ''))
+                kw_list.append(html_module.escape(kw.get('keyword', '')))
             else:
-                kw_list.append(str(kw))
+                kw_list.append(html_module.escape(str(kw)))
 
         html = f"""
         <!DOCTYPE html>
@@ -506,8 +513,8 @@ class EmailNotifier(BaseNotifier):
             <div class="alert-content">
                 <h2>{title}</h2>
                 <p><strong>Source:</strong> {source}</p>
-                {f'<p><strong>⭐ Celebrity:</strong> {celebrity}</p>' if celebrity else ''}
-                <p>{content[:300]}{'...' if len(content) > 300 else ''}</p>
+                {f'<p><strong>⭐ Celebrity:</strong> {safe_celebrity}</p>' if safe_celebrity else ''}
+                <p>{content_snippet}</p>
 
                 <div class="metrics">
                     <div class="metric">

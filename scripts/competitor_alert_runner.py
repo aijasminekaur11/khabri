@@ -15,6 +15,7 @@ Usage:
 import os
 import sys
 import json
+import html as html_module
 import asyncio
 import logging
 import hashlib
@@ -126,8 +127,11 @@ def scrape_rss_for_competitor(name, url):
     ]
 
     # Also try Google News for competitor
-    google_search = f"https://news.google.com/rss/search?q=site:{url.split('//')[1].split('/')[0]}&hl=en-IN&gl=IN&ceid=IN:en"
-    rss_attempts.append(google_search)
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.netloc:
+        google_search = f"https://news.google.com/rss/search?q=site:{parsed.netloc}&hl=en-IN&gl=IN&ceid=IN:en"
+        rss_attempts.append(google_search)
 
     for rss_url in rss_attempts:
         try:
@@ -372,8 +376,8 @@ def format_competitor_alert(result):
         lines.append("")
 
         for i, article in enumerate(articles[:3], 1):
-            title = article.get('title', 'No title')[:70]
-            url = article.get('url', '')
+            title = html_module.escape(article.get('title', 'No title')[:70])
+            url = html_module.escape(article.get('url', ''), quote=True)
 
             if url:
                 lines.append(f"  {i}. <a href=\"{url}\">{title}</a>")

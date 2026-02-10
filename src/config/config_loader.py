@@ -104,6 +104,9 @@ class ConfigLoader:
             except FileNotFoundError:
                 # Optional config doesn't exist - return empty dict
                 all_configs[config_name] = {}
+            except yaml.YAMLError as e:
+                # Invalid YAML in optional file - raise with context
+                raise ValueError(f"Invalid YAML in {config_name}.yaml: {str(e)}")
 
         return all_configs
 

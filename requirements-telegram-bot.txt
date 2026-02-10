@@ -14,3 +14,4 @@ PyGithub==2.1.1            # GitHub API wrapper
 
 # Logging and Utilities
 colorama==0.4.6            # Colored terminal output (cross-platform)
+anthropic>=0.18.0

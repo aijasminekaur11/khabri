@@ -18,6 +18,7 @@ Usage:
 import os
 import sys
 import json
+import html as html_module
 import asyncio
 import logging
 import hashlib
@@ -48,6 +49,25 @@ PROCESSED_FILE = os.path.join(_temp_dir, 'khabri_processed.json')
 CACHE_DIR = os.getenv('GITHUB_WORKSPACE', _temp_dir)
 SENT_FILE = os.path.join(CACHE_DIR, '.khabri_cache', 'digest_sent.json')
 
+class OrderedSet:
+    """A set that preserves insertion order for correct recency-based pruning."""
+
+    def __init__(self, iterable=None):
+        self._dict = dict.fromkeys(iterable or [])
+
+    def add(self, item):
+        self._dict[item] = None
+
+    def __contains__(self, item):
+        return item in self._dict
+
+    def __len__(self):
+        return len(self._dict)
+
+    def to_list(self):
+        return list(self._dict.keys())
+
+
 def load_sent_articles():
     """Load previously sent article IDs from persistent cache"""
     try:
@@ -58,11 +78,11 @@ def load_sent_articles():
             with open(SENT_FILE, 'r') as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return set(data)
-                return set(data.get('ids', []))
+                    return OrderedSet(data)
+                return OrderedSet(data.get('ids', []))
     except Exception as e:
         logger.warning(f"Could not load sent articles: {e}")
-    return set()
+    return OrderedSet()
 
 
 def save_sent_articles(sent_ids):
@@ -71,7 +91,8 @@ def save_sent_articles(sent_ids):
         cache_dir = os.path.dirname(SENT_FILE)
         os.makedirs(cache_dir, exist_ok=True)
 
-        ids_list = list(sent_ids)[-300:]  # Keep last 300 for digest
+        # Keep only last 300 IDs to prevent bloat (preserves insertion order)
+        ids_list = sent_ids.to_list()[-300:]
 
         with open(SENT_FILE, 'w') as f:
             json.dump({
@@ -148,12 +169,13 @@ def scrape_rss_feeds():
                 article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
 
                 # Parse date
-                published_at = datetime.now().isoformat()
+                published_at = datetime.now(IST).isoformat()
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     try:
-                        published_at = datetime(*entry.published_parsed[:6]).isoformat()
-                    except:
-                        pass
+                        utc_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                        published_at = utc_dt.astimezone(IST).isoformat()
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Could not parse published date for {entry.get('link', 'unknown')}: {e}")
 
                 article = {
                     'id': article_id,
@@ -162,7 +184,7 @@ def scrape_rss_feeds():
                     'source': feed_config['name'],
                     'content': entry.get('summary', entry.get('description', '')),
                     'published_at': published_at,
-                    'scraped_at': datetime.now().isoformat(),
+                    'scraped_at': datetime.now(IST).isoformat(),
                     'category': 'general'
                 }
                 all_articles.append(article)
@@ -278,7 +300,8 @@ async def send_telegram():
     # Send via Telegram API
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         payload = {
             'chat_id': chat_id,
             'text': message,
@@ -286,20 +309,27 @@ async def send_telegram():
             'disable_web_page_preview': True
         }
 
-        async with session.post(url, json=payload) as response:
-            if response.status == 200:
-                logger.info(f"Telegram digest sent! ({len(articles)} articles)")
+        try:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logger.info(f"Telegram digest sent! ({len(articles)} articles)")
 
-                # Mark articles as sent to avoid duplicates
-                sent_ids = load_sent_articles()
-                for article in articles:
-                    if article.get('id'):
-                        sent_ids.add(article['id'])
-                save_sent_articles(sent_ids)
-            else:
-                error = await response.text()
-                logger.error(f"Telegram send failed: {error}")
-                sys.exit(1)
+                    # Mark articles as sent to avoid duplicates
+                    sent_ids = load_sent_articles()
+                    for article in articles:
+                        if article.get('id'):
+                            sent_ids.add(article['id'])
+                    save_sent_articles(sent_ids)
+                else:
+                    error = await response.text()
+                    logger.error(f"Telegram send failed: {error}")
+                    sys.exit(1)
+        except asyncio.TimeoutError:
+            logger.error("Telegram API request timed out after 30s")
+            sys.exit(1)
+        except aiohttp.ClientError as e:
+            logger.error(f"Telegram API request failed: {e}")
+            sys.exit(1)
 
 
 async def send_email():
@@ -308,7 +338,12 @@ async def send_email():
 
     # Get credentials from environment
     smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    raw_port = os.getenv('SMTP_PORT')
+    try:
+        smtp_port = int(raw_port) if raw_port else 587
+    except ValueError:
+        logger.warning(f"Invalid SMTP_PORT value '{raw_port}', defaulting to 587")
+        smtp_port = 587
     username = os.getenv('SMTP_USERNAME')
     password = os.getenv('SMTP_PASSWORD')
     sender = os.getenv('SMTP_USERNAME')
@@ -390,9 +425,9 @@ def format_telegram_message(articles, digest_type):
             lines.append(f"📁 <b>{category.upper().replace('_', ' ')}</b>")
 
             for article in cat_articles[:4]:
-                title = article.get('title', 'No title')[:70]
-                url = article.get('url', '')
-                source = article.get('source', 'Unknown').replace('Google News - ', '')
+                title = html_module.escape(article.get('title', 'No title')[:70])
+                url = html_module.escape(article.get('url', ''), quote=True)
+                source = html_module.escape(article.get('source', 'Unknown').replace('Google News - ', ''))
 
                 lines.append(f"")
                 if url:
@@ -455,13 +490,14 @@ def format_email_message(articles, digest_type):
             html += f'<div class="category">{category.upper().replace("_", " ")}</div>'
 
             for article in cat_articles[:4]:
-                title = article.get('title', 'No title')
-                url = article.get('url', '')
-                source = article.get('source', 'Unknown').replace('Google News - ', '')
+                title = html_module.escape(article.get('title', 'No title'))
+                raw_url = article.get('url', '')
+                safe_url = html_module.escape(raw_url, quote=True)
+                source = html_module.escape(article.get('source', 'Unknown').replace('Google News - ', ''))
 
                 html += f'''
                 <div class="article">
-                    <h3>{'<a href="' + url + '">' + title + '</a>' if url else title}</h3>
+                    <h3>{'<a href="' + safe_url + '">' + title + '</a>' if raw_url else title}</h3>
                     <div class="source">📰 {source}</div>
                 </div>
                 '''

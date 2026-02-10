@@ -15,6 +15,7 @@ Usage:
 import os
 import sys
 import json
+import html as html_module
 import asyncio
 import logging
 import hashlib
@@ -199,6 +200,25 @@ AMOUNT_PATTERNS = [
 ]
 
 
+class OrderedSet:
+    """A set that preserves insertion order for correct recency-based pruning."""
+
+    def __init__(self, iterable=None):
+        self._dict = dict.fromkeys(iterable or [])
+
+    def add(self, item):
+        self._dict[item] = None
+
+    def __contains__(self, item):
+        return item in self._dict
+
+    def __len__(self):
+        return len(self._dict)
+
+    def to_list(self):
+        return list(self._dict.keys())
+
+
 def load_sent_articles():
     """Load previously sent article IDs from persistent cache"""
     try:
@@ -211,11 +231,11 @@ def load_sent_articles():
                 data = json.load(f)
                 # Handle both old format (list) and new format (dict with timestamp)
                 if isinstance(data, list):
-                    return set(data)
-                return set(data.get('ids', []))
+                    return OrderedSet(data)
+                return OrderedSet(data.get('ids', []))
     except Exception as e:
         logger.warning(f"Could not load sent articles: {e}")
-    return set()
+    return OrderedSet()
 
 
 def save_sent_articles(sent_ids):
@@ -224,8 +244,8 @@ def save_sent_articles(sent_ids):
         cache_dir = os.path.dirname(SENT_FILE)
         os.makedirs(cache_dir, exist_ok=True)
 
-        # Keep only last 200 IDs to prevent bloat
-        ids_list = list(sent_ids)[-200:]
+        # Keep only last 200 IDs to prevent bloat (preserves insertion order)
+        ids_list = sent_ids.to_list()[-200:]
 
         with open(SENT_FILE, 'w') as f:
             json.dump({
@@ -290,12 +310,13 @@ def scrape_budget_news():
             for entry in feed.entries[:15]:
                 article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
 
-                published_at = datetime.now().isoformat()
+                published_at = datetime.now(IST).isoformat()
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     try:
-                        published_at = datetime(*entry.published_parsed[:6]).isoformat()
-                    except:
-                        pass
+                        utc_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                        published_at = utc_dt.astimezone(IST).isoformat()
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Could not parse published date for {entry.get('link', 'unknown')}: {e}")
 
                 article = {
                     'id': article_id,
@@ -304,7 +325,7 @@ def scrape_budget_news():
                     'source': feed_config['name'],
                     'content': entry.get('summary', ''),
                     'published_at': published_at,
-                    'scraped_at': datetime.now().isoformat()
+                    'scraped_at': datetime.now(IST).isoformat()
                 }
                 all_articles.append(article)
 
@@ -322,7 +343,7 @@ def scrape_budget_news():
 
 
 def is_within_event_window(published_str):
-    """Check if article was published during event window (11 AM - 2 PM IST today)"""
+    """Check if article was published during event window (10:30 AM - 2:30 PM IST today) or within last 3 hours"""
     try:
         # Parse the published time
         published = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
@@ -330,19 +351,22 @@ def is_within_event_window(published_str):
         # Get current IST time
         now_ist = datetime.now(IST)
 
-        # Event window: 11 AM - 2 PM IST on event day
-        event_start = now_ist.replace(hour=10, minute=30, second=0, microsecond=0)  # 10:30 AM IST (30 min before)
-        event_end = now_ist.replace(hour=14, minute=30, second=0, microsecond=0)    # 2:30 PM IST (30 min after)
-
         # If published time is naive (no timezone), assume IST
         if published.tzinfo is None:
             published = published.replace(tzinfo=IST)
 
-        # Check if within event window (allow articles from last 3 hours during event)
-        three_hours_ago = now_ist - timedelta(hours=3)
+        # Event window: 10:30 AM - 2:30 PM IST on event day (30 min buffer each side)
+        event_start = now_ist.replace(hour=10, minute=30, second=0, microsecond=0)
+        event_end = now_ist.replace(hour=14, minute=30, second=0, microsecond=0)
 
+        # Accept articles if published within event window
+        if event_start <= published <= event_end:
+            return True
+
+        # Also accept articles from last 3 hours (for post-event coverage)
+        three_hours_ago = now_ist - timedelta(hours=3)
         return published >= three_hours_ago
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         logger.warning(f"Could not parse date: {published_str} - {e}")
         # If we can't parse, include it (to avoid missing important news)
         return True
@@ -463,7 +487,8 @@ async def send_telegram_alert():
     # Send via Telegram
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         payload = {
             'chat_id': chat_id,
             'text': message,
@@ -471,19 +496,26 @@ async def send_telegram_alert():
             'disable_web_page_preview': True
         }
 
-        async with session.post(url, json=payload) as response:
-            if response.status == 200:
-                logger.info(f"Budget alert sent! ({len(articles)} articles)")
+        try:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logger.info(f"Budget alert sent! ({len(articles)} articles)")
 
-                # Mark articles as sent
-                sent_ids = load_sent_articles()
-                for article in articles:
-                    sent_ids.add(article['id'])
-                save_sent_articles(sent_ids)
-            else:
-                error = await response.text()
-                logger.error(f"Telegram send failed: {error}")
-                sys.exit(1)
+                    # Mark articles as sent
+                    sent_ids = load_sent_articles()
+                    for article in articles:
+                        sent_ids.add(article['id'])
+                    save_sent_articles(sent_ids)
+                else:
+                    error = await response.text()
+                    logger.error(f"Telegram send failed: {error}")
+                    sys.exit(1)
+        except asyncio.TimeoutError:
+            logger.error("Telegram API request timed out after 30s")
+            sys.exit(1)
+        except aiohttp.ClientError as e:
+            logger.error(f"Telegram API request failed: {e}")
+            sys.exit(1)
 
 
 def format_budget_alert(articles):
@@ -501,16 +533,16 @@ def format_budget_alert(articles):
     ]
 
     for i, article in enumerate(articles[:5], 1):
-        title = article.get('title', 'No title')[:80]
-        url = article.get('url', '')
-        keywords = article.get('matched_keywords', [])[:3]
+        title = html_module.escape(article.get('title', 'No title')[:80])
+        url = html_module.escape(article.get('url', ''), quote=True)
+        keywords = [html_module.escape(kw) for kw in article.get('matched_keywords', [])[:3]]
 
         if url:
             lines.append(f'<b>{i}.</b> <a href="{url}">{title}</a>')
         else:
             lines.append(f"<b>{i}.</b> {title}")
         if keywords:
-            keyword_str = ', '.join(keywords[:3])
+            keyword_str = ', '.join(keywords)
             lines.append(f"   🏷️ {keyword_str}")
         lines.append("")
 
@@ -526,7 +558,12 @@ def send_email_alert():
     logger.info("Sending Budget alert via Email...")
 
     smtp_host = os.getenv('SMTP_HOST')
-    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    raw_port = os.getenv('SMTP_PORT')
+    try:
+        smtp_port = int(raw_port) if raw_port else 587
+    except ValueError:
+        logger.warning(f"Invalid SMTP_PORT value '{raw_port}', defaulting to 587")
+        smtp_port = 587
     username = os.getenv('SMTP_USERNAME')
     password = os.getenv('SMTP_PASSWORD')
     from_email = os.getenv('SMTP_USERNAME')
@@ -571,17 +608,18 @@ def send_email_alert():
     """
 
     for i, article in enumerate(articles[:5], 1):
-        title = article.get('title', 'No title')
-        url = article.get('url', '')
-        keywords = article.get('matched_keywords', [])[:3]
+        title = html_module.escape(article.get('title', 'No title'))
+        raw_url = article.get('url', '')
+        safe_url = html_module.escape(raw_url, quote=True)
+        keywords = [html_module.escape(kw) for kw in article.get('matched_keywords', [])[:3]]
 
         html_body += f"""
             <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">
-                    {i}. <a href="{url}" style="color: #1a5f7a; text-decoration: none;">{title}</a>
+                    {i}. <a href="{safe_url}" style="color: #1a5f7a; text-decoration: none;">{title}</a>
                 </h3>
                 <p style="margin: 5px 0; color: #666; font-size: 12px;">
-                    🏷️ {', '.join(keywords[:3]) if keywords else 'Budget News'}
+                    🏷️ {', '.join(keywords) if keywords else 'Budget News'}
                 </p>
             </div>
         """

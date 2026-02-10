@@ -15,6 +15,7 @@ Usage:
 import os
 import sys
 import json
+import html as html_module
 import asyncio
 import logging
 import hashlib
@@ -171,12 +172,13 @@ def scrape_breaking_news():
             for entry in feed.entries[:10]:
                 article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
 
-                published_at = datetime.now().isoformat()
+                published_at = datetime.now(IST).isoformat()
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     try:
-                        published_at = datetime(*entry.published_parsed[:6]).isoformat()
-                    except:
-                        pass
+                        utc_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                        published_at = utc_dt.astimezone(IST).isoformat()
+                    except (ValueError, TypeError, IndexError, AttributeError) as e:
+                        logger.warning(f"Could not parse published date for {entry.get('link', 'unknown')}: {e}")
 
                 article = {
                     'id': article_id,
@@ -185,7 +187,7 @@ def scrape_breaking_news():
                     'source': feed_config['name'],
                     'content': entry.get('summary', ''),
                     'published_at': published_at,
-                    'scraped_at': datetime.now().isoformat()
+                    'scraped_at': datetime.now(IST).isoformat()
                 }
                 all_articles.append(article)
 
@@ -292,7 +294,8 @@ async def send_breaking_alert():
     # Send via Telegram
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         payload = {
             'chat_id': chat_id,
             'text': message,
@@ -300,19 +303,26 @@ async def send_breaking_alert():
             'disable_web_page_preview': True
         }
 
-        async with session.post(url, json=payload) as response:
-            if response.status == 200:
-                logger.info(f"Breaking news alert sent! ({len(articles)} articles)")
+        try:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logger.info(f"Breaking news alert sent! ({len(articles)} articles)")
 
-                # Mark articles as sent
-                sent_ids = load_sent_articles()
-                for article in articles:
-                    sent_ids.add(article['id'])
-                save_sent_articles(sent_ids)
-            else:
-                error = await response.text()
-                logger.error(f"Telegram send failed: {error}")
-                sys.exit(1)
+                    # Mark articles as sent
+                    sent_ids = load_sent_articles()
+                    for article in articles:
+                        sent_ids.add(article['id'])
+                    save_sent_articles(sent_ids)
+                else:
+                    error = await response.text()
+                    logger.error(f"Telegram send failed: {error}")
+                    sys.exit(1)
+        except asyncio.TimeoutError:
+            logger.error("Telegram API request timed out after 30s")
+            sys.exit(1)
+        except aiohttp.ClientError as e:
+            logger.error(f"Telegram API request failed: {e}")
+            sys.exit(1)
 
 
 def format_breaking_alert(articles):
@@ -330,16 +340,17 @@ def format_breaking_alert(articles):
     ]
 
     for i, article in enumerate(articles[:5], 1):
-        title = article.get('title', 'No title')[:80]
+        title = html_module.escape(article.get('title', 'No title')[:80])
         url = article.get('url', '')
-        keywords = article.get('matched_keywords', [])[:3]
+        safe_url = html_module.escape(url)
+        keywords = [html_module.escape(kw) for kw in article.get('matched_keywords', [])[:3]]
 
         if url:
-            lines.append(f'🔴 <b>{i}.</b> <a href="{url}">{title}</a>')
+            lines.append(f'🔴 <b>{i}.</b> <a href="{safe_url}">{title}</a>')
         else:
             lines.append(f"🔴 <b>{i}.</b> {title}")
         if keywords:
-            keyword_str = ', '.join(keywords[:3])
+            keyword_str = ', '.join(keywords)
             lines.append(f"   🏷️ {keyword_str}")
         lines.append("")
 

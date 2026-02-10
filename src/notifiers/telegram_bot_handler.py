@@ -14,6 +14,7 @@ import requests
 import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from .claude_auto_fixer import ClaudeAutoFixer
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,9 @@ class TelegramBotHandler:
 
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
         self.github_api = "https://api.github.com"
+
+        # Initialize Claude Auto-Fixer
+        self.claude_fixer = ClaudeAutoFixer()
 
         # Track last update ID to avoid duplicate processing
         self.last_update_id = 0
@@ -112,6 +116,36 @@ class TelegramBotHandler:
             return response.status_code == 200
         except Exception as e:
             logger.error(f"Error sending message: {e}")
+            return False
+
+    def _add_issue_comment(self, issue_number: int, comment_body: str) -> bool:
+        """
+        Add a comment to a GitHub issue
+
+        Args:
+            issue_number: Issue number
+            comment_body: Comment text
+
+        Returns:
+            True if successful
+        """
+        if not self.github_token:
+            return False
+
+        url = f"{self.github_api}/repos/{self.github_repo}/issues/{issue_number}/comments"
+
+        headers = {
+            'Authorization': f'token {self.github_token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
+        payload = {'body': comment_body}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            return response.status_code == 201
+        except Exception as e:
+            logger.error(f"Error adding comment: {e}")
             return False
 
     def create_github_issue(
@@ -272,19 +306,54 @@ Please analyze and fix the issue described above. Follow these steps:
             issue_url = issue['html_url']
             issue_number = issue['number']
 
-            response = f"""✅ **Fix request created successfully!**
+            # Send initial success message
+            self.send_message(
+                chat_id,
+                f"✅ **Issue #{issue_number} created!**\n\n"
+                f"🔗 {issue_url}\n\n"
+                f"🤖 Claude is analyzing..."
+            )
+
+            # Use Claude to analyze the issue
+            logger.info(f"Analyzing issue #{issue_number} with Claude...")
+            analysis_result = self.claude_fixer.analyze_issue(issue_title, issue_body)
+
+            if analysis_result['success']:
+                analysis = analysis_result['analysis']
+                tokens_used = analysis_result.get('tokens_used', 0)
+
+                # Add analysis as a comment on the issue
+                self._add_issue_comment(issue_number, f"""## 🤖 Claude Analysis
+
+{analysis}
+
+---
+*Analysis powered by Claude Sonnet 4 ({tokens_used} tokens)*
+""")
+
+                # Send analysis to user
+                analysis_preview = analysis[:500] + "..." if len(analysis) > 500 else analysis
+
+                response = f"""🤖 **Claude Analysis Complete!**
 
 📋 **Issue**: #{issue_number}
-🔗 **Link**: {issue_url}
 
-🤖 Claude Code will automatically:
-1. Analyze the issue
-2. Create a fix
-3. Run tests
-4. Create a pull request
+**Analysis Preview:**
+{analysis_preview}
 
-You'll receive a notification when the fix is ready for review.
+Full analysis posted as comment on GitHub issue.
+You'll be notified when implementation is ready for review.
 """
+            else:
+                # Claude analysis failed
+                error_msg = analysis_result.get('message', 'Analysis failed')
+                response = f"""✅ **Issue created**: #{issue_number}
+
+⚠️ Auto-analysis unavailable: {error_msg}
+
+Please review manually: {issue_url}
+"""
+
             self.send_message(chat_id, response)
             return True
         else:

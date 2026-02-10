@@ -40,7 +40,7 @@ def test_tempfile_paths():
             continue
         
         # Verify path doesn't contain hardcoded /tmp/
-        if '/tmp/' in path and sys.platform != 'linux':
+        if '/tmp/' in path and sys.platform not in ('linux', 'darwin'):
             print(f"⚠ WARNING: {name} contains /tmp/ but platform is {sys.platform}")
         
         print(f"✓ {name}: {path}")

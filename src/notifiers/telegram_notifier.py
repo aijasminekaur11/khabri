@@ -124,7 +124,15 @@ class TelegramNotifier(BaseNotifier):
         current_chunk = ""
 
         for line in lines:
-            if len(current_chunk) + len(line) + 1 <= self.MAX_MESSAGE_LENGTH:
+            # Handle single lines longer than MAX_MESSAGE_LENGTH
+            if len(line) > self.MAX_MESSAGE_LENGTH:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
+                # Split the long line into segments
+                for i in range(0, len(line), self.MAX_MESSAGE_LENGTH):
+                    chunks.append(line[i:i + self.MAX_MESSAGE_LENGTH])
+            elif len(current_chunk) + len(line) + 1 <= self.MAX_MESSAGE_LENGTH:
                 current_chunk += line + '\n'
             else:
                 if current_chunk:
@@ -148,6 +156,11 @@ class TelegramNotifier(BaseNotifier):
         """
         digest_type = digest.get('type', 'unknown').upper()
         generated_at = digest.get('generated_at', datetime.now())
+        if isinstance(generated_at, str):
+            try:
+                generated_at = datetime.fromisoformat(generated_at)
+            except (ValueError, TypeError):
+                generated_at = datetime.now()
         news_items = digest.get('news_items', [])
 
         # Select emoji based on digest type
@@ -195,6 +208,11 @@ class TelegramNotifier(BaseNotifier):
                 if len(title) > 80:
                     title = title[:77] + "..."
 
+                # Escape Markdown special characters (backslash first)
+                for ch in ('\\', '*', '_', '`', '[', ']'):
+                    title = title.replace(ch, f'\\{ch}')
+                    source = source.replace(ch, f'\\{ch}')
+
                 impact_icon = {'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(impact, '⚪')
                 message += f"• {title}\n"
                 message += f"  └ {source} {impact_icon}\n"
@@ -225,28 +243,38 @@ class TelegramNotifier(BaseNotifier):
         celebrity = news.get('celebrity_match')
         verified = news.get('verified', False)
 
+        # Escape Markdown special characters (backslash first)
+        def _escape_md(text):
+            for ch in ('\\', '*', '_', '`', '[', ']'):
+                text = text.replace(ch, f'\\{ch}')
+            return text
+
+        title = _escape_md(title)
+
         message = f"🚨 *HIGH-IMPACT ALERT* (Score: {score}/10)\n\n"
         message += f"*{title}*\n\n"
         message += f"📊 IMPACT: {impact} | DISCOVER: {discover}%\n\n"
 
         if celebrity:
-            message += f"⭐ Celebrity: {celebrity}\n\n"
+            message += f"⭐ Celebrity: {_escape_md(celebrity)}\n\n"
 
         # Extract keyword strings if they're dictionaries
         if keywords:
             kw_list = []
             for kw in keywords[:5]:  # Limit to 5 keywords
                 if isinstance(kw, dict):
-                    kw_list.append(kw.get('keyword', str(kw)))
+                    kw_list.append(_escape_md(kw.get('keyword', str(kw))))
                 else:
-                    kw_list.append(str(kw))
+                    kw_list.append(_escape_md(str(kw)))
             message += f"🎯 Keywords: {', '.join(kw_list)}\n\n"
 
         verification = "✅ Verified" if verified else "⚠️ Unverified"
         message += f"{verification}\n\n"
 
         if url:
-            message += f"🔗 [Read More]({url})"
+            # Encode parentheses to prevent Markdown link breakage
+            safe_url = url.replace('(', '%28').replace(')', '%29')
+            message += f"🔗 [Read More]({safe_url})"
 
         return message
 

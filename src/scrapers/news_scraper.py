@@ -97,7 +97,10 @@ class NewsScraper:
             if selector:
                 element = soup.select_one(selector)
                 if element:
-                    result[field] = element.get_text(strip=True)
+                    if field == 'link' and element.get('href'):
+                        result[field] = element.get('href')
+                    else:
+                        result[field] = element.get_text(strip=True)
 
         return result
 
@@ -117,8 +120,11 @@ class NewsScraper:
         if source.get('type') != 'scrape':
             return []
 
-        source_id = source['id']
-        url = source['url']
+        source_id = source.get('id')
+        url = source.get('url')
+        if not source_id or not url:
+            logger.error(f"Source config missing required 'id' or 'url': {source}")
+            return []
         rate_limit = source.get('rate_limit_ms', 1000)
         selectors = source.get('selectors', {})
 
