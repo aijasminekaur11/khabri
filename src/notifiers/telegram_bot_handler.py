@@ -144,9 +144,12 @@ class TelegramBotHandler:
 
         payload = {
             'title': title,
-            'body': body,
-            'labels': labels or ['auto-fix', 'telegram-request']
+            'body': body
         }
+
+        # Only add labels if explicitly provided (don't add default labels)
+        if labels:
+            payload['labels'] = labels
 
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
@@ -261,8 +264,8 @@ Please analyze and fix the issue described above. Follow these steps:
 
         issue = self.create_github_issue(
             title=issue_title,
-            body=issue_body,
-            labels=['auto-fix', 'telegram-request', 'priority-high']
+            body=issue_body
+            # Labels removed - add them manually in GitHub if needed
         )
 
         if issue:
