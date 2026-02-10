@@ -14,9 +14,17 @@ import requests
 import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from .claude_auto_fixer import ClaudeAutoFixer
 
 logger = logging.getLogger(__name__)
+
+# Try to import Claude fixer, but don't fail if not available
+try:
+    from .claude_auto_fixer import ClaudeAutoFixer
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+    logger.warning("Claude Auto-Fixer not available")
+    ClaudeAutoFixer = None
 
 
 class TelegramBotHandler:
@@ -50,8 +58,12 @@ class TelegramBotHandler:
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
         self.github_api = "https://api.github.com"
 
-        # Initialize Claude Auto-Fixer
-        self.claude_fixer = ClaudeAutoFixer()
+        # Initialize Claude Auto-Fixer if available
+        if CLAUDE_AVAILABLE and ClaudeAutoFixer:
+            self.claude_fixer = ClaudeAutoFixer()
+        else:
+            self.claude_fixer = None
+            logger.info("Claude Auto-Fixer disabled")
 
         # Track last update ID to avoid duplicate processing
         self.last_update_id = 0
@@ -307,16 +319,20 @@ Please analyze and fix the issue described above. Follow these steps:
             issue_number = issue['number']
 
             # Send initial success message
+            analyzing_msg = "🤖 Claude is analyzing..." if self.claude_fixer else ""
             self.send_message(
                 chat_id,
                 f"✅ **Issue #{issue_number} created!**\n\n"
                 f"🔗 {issue_url}\n\n"
-                f"🤖 Claude is analyzing..."
+                f"{analyzing_msg}"
             )
 
-            # Use Claude to analyze the issue
-            logger.info(f"Analyzing issue #{issue_number} with Claude...")
-            analysis_result = self.claude_fixer.analyze_issue(issue_title, issue_body)
+            # Use Claude to analyze the issue if available
+            if self.claude_fixer:
+                logger.info(f"Analyzing issue #{issue_number} with Claude...")
+                analysis_result = self.claude_fixer.analyze_issue(issue_title, issue_body)
+            else:
+                analysis_result = {'success': False, 'message': 'Claude API not configured'}
 
             if analysis_result['success']:
                 analysis = analysis_result['analysis']
