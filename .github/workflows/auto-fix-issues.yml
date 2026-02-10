@@ -81,24 +81,32 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r testing/requirements-test.txt
-          pip install requests PyGithub
+          pip install -r requirements.txt
+          pip install requests PyGithub anthropic
 
-      - name: 🔍 Analyze issue
+      - name: 🤖 Generate fix with Claude AI
         id: analyze
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          # This is where you would integrate Claude Code or similar AI
-          # For now, we'll create a placeholder script
+          echo "🤖 Running Claude AI auto-fix..."
 
-          echo "Analyzing issue #${{ needs.validate-issue.outputs.issue_number }}"
+          python scripts/auto_fix_with_claude.py ${{ needs.validate-issue.outputs.issue_number }}
 
-          # TODO: Integrate Claude Code API here
-          # For now, we'll create a simple analysis
+          if [ $? -eq 0 ]; then
+            echo "analysis_complete=true" >> $GITHUB_OUTPUT
+            echo "fix_applied=true" >> $GITHUB_OUTPUT
+          else
+            echo "analysis_complete=true" >> $GITHUB_OUTPUT
+            echo "fix_applied=false" >> $GITHUB_OUTPUT
+          fi
 
-          echo "analysis_complete=true" >> $GITHUB_OUTPUT
           echo "fix_branch=auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}" >> $GITHUB_OUTPUT
 
       - name: 🔧 Create fix branch
+        if: steps.analyze.outputs.fix_applied == 'true'
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
@@ -106,25 +114,13 @@ jobs:
           BRANCH_NAME="auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}"
           git checkout -b "$BRANCH_NAME"
 
-      - name: 📝 Apply automated fixes
+      - name: 📝 Stage all changes made by Claude
         id: apply_fix
+        if: steps.analyze.outputs.fix_applied == 'true'
         run: |
-          # This is a placeholder for AI-generated fixes
-          # In a real implementation, this would use Claude Code API
-
-          echo "# Auto-fix applied for issue #${{ needs.validate-issue.outputs.issue_number }}" > AUTO_FIX_LOG.md
-          echo "" >> AUTO_FIX_LOG.md
-          echo "Timestamp: $(date)" >> AUTO_FIX_LOG.md
-          echo "" >> AUTO_FIX_LOG.md
-          echo "## Changes Made" >> AUTO_FIX_LOG.md
-          echo "- Automated analysis completed" >> AUTO_FIX_LOG.md
-          echo "- Potential fixes identified" >> AUTO_FIX_LOG.md
-          echo "" >> AUTO_FIX_LOG.md
-          echo "## Next Steps" >> AUTO_FIX_LOG.md
-          echo "- Manual review required" >> AUTO_FIX_LOG.md
-          echo "- Run tests to verify" >> AUTO_FIX_LOG.md
-
-          git add AUTO_FIX_LOG.md
+          # Claude script already modified the files
+          # Just stage them for commit
+          git add -A
 
           echo "fix_applied=true" >> $GITHUB_OUTPUT
 
