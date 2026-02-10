@@ -56,7 +56,7 @@ This guide shows how to set up the Telegram bot that allows your wife to send fi
    |------|-------|----------------|
    | `TELEGRAM_BOT_TOKEN` | Your bot token from Step 1 | BotFather |
    | `TELEGRAM_CHAT_ID` | Your chat ID from Step 2 | getUpdates API |
-   | `GITHUB_TOKEN` | Your PAT from Step 3 | GitHub Settings |
+   | `GH_TOKEN` | Your PAT from Step 3 | GitHub Settings |
 
 ### Step 5: Create Environment File (For Local Bot)
 
@@ -66,7 +66,7 @@ Create a file named `.env` in your project root:
 # .env file
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 TELEGRAM_CHAT_ID=123456789
-GITHUB_TOKEN=ghp_your_github_token_here
+GH_TOKEN=ghp_your_github_token_here
 GITHUB_REPO=aijasminekaur11/khabri
 ```
 
@@ -255,7 +255,7 @@ Type=simple
 User=your-username
 WorkingDirectory=/path/to/News_Update
 Environment="TELEGRAM_BOT_TOKEN=your-token"
-Environment="GITHUB_TOKEN=your-token"
+Environment="GH_TOKEN=your-token"
 Environment="GITHUB_REPO=aijasminekaur11/khabri"
 ExecStart=/usr/bin/python3 scripts/run_telegram_bot.py
 Restart=always
@@ -340,7 +340,7 @@ def process_message(self, message: Dict[str, Any]) -> bool:
 ### GitHub Issues Not Created
 
 **Check:**
-1. `GITHUB_TOKEN` has correct permissions
+1. `GH_TOKEN` has correct permissions
 2. `GITHUB_REPO` is correctly formatted: `owner/repo`
 3. Repository exists and token has access
 4. GitHub API status: https://www.githubstatus.com/

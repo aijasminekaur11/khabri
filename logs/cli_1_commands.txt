@@ -1,0 +1,82 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLI 1: COVERAGE IMPROVEMENT SQUAD - COMMAND INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ROLE: Coverage Improvement Squad
+PRIORITY: HIGH
+MISSION: Increase test coverage from 82.47% to 90%+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND TO EXECUTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are CLI 1 - Coverage Improvement Squad.
+
+INSTRUCTIONS:
+
+1. READ governance files:
+   - D:\Jasmine\00001_Content_app\News_Update\claude.md
+   - D:\Jasmine\00001_Content_app\News_Update\docs\project_state.json
+
+2. YOUR ASSIGNMENT:
+   - Increase test coverage from 82.47% to 90%+
+   - PRIMARY FOCUS: News Scraper (currently 21% coverage)
+   - SECONDARY: Config Validator (66%) and Config Manager (76%)
+
+3. SPECIFIC TASKS:
+
+   A. News Scraper Tests (testing/test_cases/unit/test_news_scraper.py):
+      - Current: Mostly placeholder tests
+      - Required: Add 50-60 comprehensive test cases covering:
+        * Article extraction from Economic Times
+        * Article extraction from Livemint
+        * Article extraction from Housing.com
+        * BeautifulSoup parsing edge cases
+        * Error handling (404, 500, timeout)
+        * HTML structure variations
+        * Rate limiting behavior
+        * Empty response handling
+        * Malformed HTML handling
+
+   B. Config Module Tests:
+      - Add 15-20 tests for config_validator.py edge cases
+      - Add 10-15 tests for config_manager.py error paths
+
+4. IMPLEMENTATION APPROACH:
+   - Use mocked HTTP responses (responses library)
+   - Follow existing test patterns in test_rss_reader.py
+   - Use fixtures for mock HTML content
+   - Ensure all tests are isolated and repeatable
+
+5. DEFINITION OF DONE:
+   - Overall coverage reaches 90%+
+   - News scraper coverage reaches 85%+
+   - All new tests pass
+   - No regressions in existing tests
+   - Update logs/cli_1.log with progress
+
+6. FILES YOU MAY WRITE TO:
+   - testing/test_cases/unit/test_news_scraper.py (expand)
+   - testing/test_cases/unit/test_config_*.py (expand)
+   - testing/fixtures/ (add new fixtures if needed)
+   - logs/cli_1.log (progress updates)
+   - docs/project_state.json (update your section only)
+
+7. VERIFICATION:
+   After adding tests, run:
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/ --cov=src --cov-report=term-missing
+
+8. DEPENDENCIES: NONE (you can start immediately)
+
+9. COORDINATION:
+   - CLI 4 will monitor your progress and re-run tests
+   - Update project_state.json after completing each milestone
+   - Log all activities to logs/cli_1.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTE NOW: BEGIN COVERAGE IMPROVEMENT WORK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

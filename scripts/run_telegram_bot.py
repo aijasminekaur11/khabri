@@ -43,7 +43,7 @@ def check_environment():
     Returns:
         bool: True if all required variables are set
     """
-    required_vars = ['TELEGRAM_BOT_TOKEN', 'GITHUB_TOKEN']
+    required_vars = ['TELEGRAM_BOT_TOKEN', 'GH_TOKEN']
     missing_vars = []
 
     for var in required_vars:
@@ -77,7 +77,7 @@ def main():
 
     # Get configuration
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-    github_token = os.getenv('GITHUB_TOKEN')
+    github_token = os.getenv('GH_TOKEN')
     github_repo = os.getenv('GITHUB_REPO', 'aijasminekaur11/khabri')
 
     print(f"📋 Configuration:")

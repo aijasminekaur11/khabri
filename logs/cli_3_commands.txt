@@ -1,0 +1,184 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLI 3: COMMUNICATION TESTER - COMMAND INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ROLE: Communication Tester
+PRIORITY: HIGH
+MISSION: Test Email + Telegram with real .env credentials
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND TO EXECUTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are CLI 3 - Communication Tester.
+
+INSTRUCTIONS:
+
+1. READ governance files:
+   - D:\Jasmine\00001_Content_app\News_Update\claude.md
+   - D:\Jasmine\00001_Content_app\News_Update\docs\project_state.json
+
+2. PREREQUISITE CHECK:
+   ✅ .env file exists at: D:\Jasmine\00001_Content_app\News_Update\.env
+   ✅ Contains: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+   ✅ Contains: EMAIL_SMTP_HOST, EMAIL_USERNAME, EMAIL_PASSWORD
+
+3. YOUR ASSIGNMENT:
+   - Test Telegram bot with REAL API
+   - Test Email SMTP with REAL credentials
+   - Validate message formatting
+   - Test error handling
+   - Document results
+
+4. SPECIFIC TASKS:
+
+   A. TELEGRAM TESTS (Real API):
+
+      Test 1: Send Simple Message
+      cd D:\Jasmine\00001_Content_app\News_Update
+      python -c "
+from src.notifiers.telegram_notifier import TelegramNotifier
+import asyncio
+async def test():
+    notifier = TelegramNotifier()
+    await notifier.send_message('✅ CLI 3: Telegram Test - Simple Message')
+asyncio.run(test())
+"
+
+      Test 2: Send Formatted Alert
+      python -c "
+from src.notifiers.telegram_notifier import TelegramNotifier
+import asyncio
+async def test():
+    notifier = TelegramNotifier()
+    news = {
+        'title': 'Test News Article',
+        'summary': 'This is a test summary.',
+        'category': 'real_estate',
+        'priority': 8
+    }
+    await notifier.send_alert(news)
+asyncio.run(test())
+"
+
+      Test 3: Send Digest
+      python -c "
+from src.notifiers.telegram_notifier import TelegramNotifier
+import asyncio
+async def test():
+    notifier = TelegramNotifier()
+    items = [
+        {'title': 'Test 1', 'summary': 'Summary 1', 'priority': 8},
+        {'title': 'Test 2', 'summary': 'Summary 2', 'priority': 7}
+    ]
+    await notifier.send_digest(items)
+asyncio.run(test())
+"
+
+      Test 4: Error Handling
+      - Test with invalid chat ID
+      - Test with network timeout
+      - Verify error messages are logged
+
+   B. EMAIL TESTS (Real SMTP):
+
+      Test 1: Send Simple Email
+      python -c "
+from src.notifiers.email_notifier import EmailNotifier
+import asyncio
+async def test():
+    notifier = EmailNotifier()
+    await notifier.send_email(
+        subject='✅ CLI 3: Email Test - Simple',
+        body='This is a test email from the News Intelligence System.'
+    )
+asyncio.run(test())
+"
+
+      Test 2: Send Formatted Alert
+      python -c "
+from src.notifiers.email_notifier import EmailNotifier
+import asyncio
+async def test():
+    notifier = EmailNotifier()
+    news = {
+        'title': 'Test News Article',
+        'summary': 'This is a test summary.',
+        'category': 'real_estate',
+        'priority': 8,
+        'url': 'https://example.com'
+    }
+    await notifier.send_alert(news)
+asyncio.run(test())
+"
+
+      Test 3: Send Morning Digest
+      python -c "
+from src.notifiers.email_notifier import EmailNotifier
+import asyncio
+async def test():
+    notifier = EmailNotifier()
+    items = [
+        {'title': 'Test 1', 'summary': 'Summary 1', 'priority': 8, 'url': 'https://test1.com'},
+        {'title': 'Test 2', 'summary': 'Summary 2', 'priority': 7, 'url': 'https://test2.com'}
+    ]
+    await notifier.send_digest(items)
+asyncio.run(test())
+"
+
+      Test 4: Error Handling
+      - Test with wrong SMTP credentials
+      - Test with invalid recipient
+      - Verify retry logic
+
+5. DOCUMENTATION REQUIRED:
+   Create: testing/reports/communication_test_report.md
+
+   Include:
+   - Telegram test results (success/failure)
+   - Email test results (success/failure)
+   - Error handling validation
+   - Screenshots of received messages (if possible)
+   - API response times
+   - Recommendations
+
+6. DEFINITION OF DONE:
+   ✅ Telegram: At least 1 successful message sent
+   ✅ Email: At least 1 successful email delivered
+   ✅ Both: Alert format validated
+   ✅ Both: Digest format validated
+   ✅ Both: Error handling tested
+   ✅ Report created with results
+   ✅ logs/cli_3.log updated
+
+7. FILES YOU MAY WRITE TO:
+   - testing/reports/communication_test_report.md (create)
+   - logs/cli_3.log (progress updates)
+   - docs/project_state.json (update your section only)
+
+8. VERIFICATION:
+   - Check your Telegram for test messages
+   - Check your email inbox for test emails
+   - Document all results in report
+
+9. DEPENDENCIES: NONE (you can start immediately)
+
+10. COORDINATION:
+    - Update project_state.json after each test
+    - Log all activities to logs/cli_3.log
+    - Report any credential issues immediately
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANT SECURITY NOTES:
+- NEVER log credentials in plain text
+- NEVER commit .env file to git
+- Use environment variables only
+- Report any security concerns immediately
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTE NOW: BEGIN COMMUNICATION TESTING WORK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

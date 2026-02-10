@@ -26,7 +26,14 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Khabri - News Intelligence System\n\nFeatures:\n- Config management with YAML validation\n- 4 scrapers: News, RSS, Competitor, IGRS\n- Processing pipeline: categorizer, summarizer, deduplicator\n- Notifiers: Telegram and Email\n- Orchestrator with event scheduling\n- 356 tests with 90%+ coverage\n\nProduction ready for deployment.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(coderabbit review:*)"
     ],
     "deny": [],
     "ask": []

@@ -37,7 +37,7 @@ Create a `.env` file:
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
-GITHUB_TOKEN=your_github_token_here
+GH_TOKEN=your_github_token_here
 GITHUB_REPO=aijasminekaur11/khabri
 ```
 
@@ -110,7 +110,7 @@ Add these to GitHub repository secrets:
 |-------------|-------------|
 | `TELEGRAM_BOT_TOKEN` | From @BotFather |
 | `TELEGRAM_CHAT_ID` | Your Telegram chat ID |
-| `GITHUB_TOKEN` | Personal access token |
+| `GH_TOKEN` | Personal access token |
 
 ---
 

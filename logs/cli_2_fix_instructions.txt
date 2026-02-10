@@ -1,0 +1,180 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLI 2: INTEGRATION ENGINEER - FIX INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM: CLAUDE_DESKTOP (Orchestrator)
+TO: CLI 2 (Integration Engineer)
+DATE: 2026-01-31T02:30:00Z
+PRIORITY: HIGH - UNBLOCK REQUIRED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## CURRENT STATUS
+
+Your Status: BLOCKED
+Tests Created: 28 integration tests
+Tests Passing: 11/16 (68.75%)
+Tests Failing: 5 tests
+Failure Rate: 31.25%
+Root Cause: TypeError in ProcessorPipeline initialization
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## PROBLEM IDENTIFIED BY CLI 4
+
+Error Message:
+```
+TypeError: ProcessorPipeline.__init__() got unexpected keyword
+argument 'config_manager'
+```
+
+Affected Tests: 5 integration tests in your new test files
+
+Root Cause: Your tests are passing `config_manager` parameter to
+ProcessorPipeline but the actual class doesn't accept that parameter.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## YOUR ASSIGNMENT: FIX THE 5 FAILING TESTS
+
+STEP 1: READ THE ACTUAL IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read the actual ProcessorPipeline class to understand its __init__ signature:
+
+File: D:\Jasmine\00001_Content_app\News_Update\src\processors\processor_pipeline.py
+
+Action: Read lines 1-50 of processor_pipeline.py to see the actual __init__ method
+
+Command:
+Read the file and identify:
+- What parameters does __init__() actually accept?
+- Does it accept config_manager? config? or nothing?
+- How should the class be instantiated correctly?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 2: IDENTIFY ALL FAILING TEST LOCATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your failing tests are in:
+- testing/test_cases/integration/test_config_to_scrapers.py
+- testing/test_cases/integration/test_scrapers_to_processors.py
+- testing/test_cases/integration/test_full_pipeline_e2e.py
+
+Action: Search for all lines where ProcessorPipeline is instantiated with config_manager
+
+Command:
+grep -n "ProcessorPipeline.*config_manager" testing/test_cases/integration/*.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 3: FIX EACH FAILING TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For EACH location where you instantiate ProcessorPipeline:
+
+WRONG (current):
+```python
+pipeline = ProcessorPipeline(config_manager=mock_config)
+```
+
+CORRECT (example - adjust based on actual signature):
+```python
+pipeline = ProcessorPipeline()  # If no params needed
+# OR
+pipeline = ProcessorPipeline(config=mock_config)  # If it's 'config' not 'config_manager'
+```
+
+Action: Update ALL instances in your 3 integration test files
+
+Files to Edit:
+1. testing/test_cases/integration/test_config_to_scrapers.py
+2. testing/test_cases/integration/test_scrapers_to_processors.py
+3. testing/test_cases/integration/test_full_pipeline_e2e.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 4: VERIFY THE FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After fixing all instances, run the integration tests:
+
+Command:
+cd D:\Jasmine\00001_Content_app\News_Update
+python -m pytest testing/test_cases/integration/ -v --tb=short
+
+Expected Result:
+- All 41 integration tests should pass (13 old + 28 new)
+- No TypeError exceptions
+- Pass rate: 100%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 5: UPDATE PROJECT STATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After all tests pass, update your status:
+
+File: docs/project_state.json
+
+Update your section:
+- status: "BLOCKED" → "DONE"
+- test_results.integration_failed: 5 → 0
+- test_results.integration_passed: 11 → 41
+- test_results.integration_pass_rate: "26.8%" → "100%"
+- test_results.status: "INTEGRATION_TESTS_FAILING" → "ALL_PASSING"
+- blockers: [] (clear all blockers)
+- work_completed: false → true
+- verification_status: "FAILED" → "PASSED"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 6: LOG YOUR WORK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: logs/cli_2.log
+
+Add entry:
+```
+[2026-01-31 02:30:00] [CLI_2] [FIX] [START] Fixing ProcessorPipeline initialization
+Files: test_config_to_scrapers.py, test_scrapers_to_processors.py, test_full_pipeline_e2e.py
+Issue: TypeError - unexpected keyword argument 'config_manager'
+---
+
+[2026-01-31 02:XX:XX] [CLI_2] [FIX] [COMPLETE] All integration tests passing
+Tests: 41/41 passing (100%)
+Coverage: Integration paths validated
+Files Fixed: 3 test files
+---
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## DEFINITION OF DONE
+
+✅ Read ProcessorPipeline actual implementation
+✅ Fixed all 5 failing test instantiations
+✅ All 41 integration tests passing (100%)
+✅ No TypeErrors in test output
+✅ Updated project_state.json (status: DONE, blockers: [])
+✅ Logged all activities to logs/cli_2.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## EXECUTION PROTOCOL
+
+1. READ first, FIX second
+2. Do NOT skip reading the actual implementation
+3. Fix ALL instances, not just one
+4. VERIFY with pytest before updating state
+5. UPDATE state only after 100% passing
+6. LOG everything
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTE NOW: BEGIN FIX PROCESS
+
+When complete, CLI 4 will detect your update and re-verify your tests.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

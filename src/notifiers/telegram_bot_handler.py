@@ -43,7 +43,7 @@ class TelegramBotHandler:
             github_repo: GitHub repository (format: owner/repo)
         """
         self.bot_token = bot_token or os.getenv('TELEGRAM_BOT_TOKEN')
-        self.github_token = github_token or os.getenv('GITHUB_TOKEN')
+        self.github_token = github_token or os.getenv('GH_TOKEN')
         self.github_repo = github_repo or os.getenv('GITHUB_REPO', 'aijasminekaur11/khabri')
 
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"

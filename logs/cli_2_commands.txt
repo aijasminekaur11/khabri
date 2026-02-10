@@ -1,0 +1,91 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLI 2: INTEGRATION ENGINEER - COMMAND INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ROLE: Integration Engineer
+PRIORITY: MEDIUM
+MISSION: Begin PHASE_06 Integration work
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND TO EXECUTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are CLI 2 - Integration Engineer.
+
+INSTRUCTIONS:
+
+1. READ governance files:
+   - D:\Jasmine\00001_Content_app\News_Update\claude.md
+   - D:\Jasmine\00001_Content_app\News_Update\docs\project_state.json
+
+2. YOUR ASSIGNMENT:
+   - Prepare for PHASE_06 Integration
+   - Validate component interactions
+   - Test data flow between modules
+   - Create integration test suite
+
+3. SPECIFIC TASKS:
+
+   A. Component Orchestration Tests:
+      - Test: Config Manager → Scrapers workflow
+      - Test: Scrapers → Processors workflow
+      - Test: Processors → Notifiers workflow
+      - Test: Full pipeline: Config → Scrape → Process → Notify
+
+   B. Data Flow Validation:
+      - Create integration test: Morning digest workflow
+      - Create integration test: Real-time alert workflow
+      - Create integration test: Event-triggered scraping
+      - Test data transformation at each stage
+
+   C. Real Config Integration:
+      - Test with sample sources.json
+      - Test with sample keywords.json
+      - Test with sample celebrities.json
+      - Validate config loading in full pipeline
+
+   D. System Stability Tests:
+      - Test concurrent scraper execution
+      - Test memory usage under load
+      - Test error propagation through pipeline
+      - Test graceful degradation
+
+4. IMPLEMENTATION APPROACH:
+   - Create new files in testing/test_cases/integration/
+   - Use existing integration test patterns
+   - Mock only external APIs (keep internal components real)
+   - Test with realistic data volumes
+
+5. DEFINITION OF DONE:
+   - 20-30 new integration tests created
+   - All tests pass
+   - Component interactions validated
+   - Data flow documented
+   - Update logs/cli_2.log with progress
+
+6. FILES YOU MAY WRITE TO:
+   - testing/test_cases/integration/test_*.py (create new)
+   - testing/fixtures/ (add integration fixtures)
+   - logs/cli_2.log (progress updates)
+   - docs/project_state.json (update your section only)
+
+7. VERIFICATION:
+   After adding tests, run:
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/integration/ -v
+
+8. DEPENDENCIES:
+   - SOFT dependency on CLI 1 (can work with current 82.47% coverage)
+   - Can start immediately
+
+9. COORDINATION:
+   - CLI 4 will monitor your integration tests
+   - Update project_state.json after completing each milestone
+   - Log all activities to logs/cli_2.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTE NOW: BEGIN INTEGRATION ENGINEERING WORK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

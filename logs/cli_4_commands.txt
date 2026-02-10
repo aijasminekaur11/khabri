@@ -1,0 +1,148 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLI 4: TEST RUNNER & MONITOR - COMMAND INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ROLE: Test Runner & Monitor
+PRIORITY: CONTINUOUS
+MISSION: Monitor all CLI activities and re-run tests as needed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMAND TO EXECUTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are CLI 4 - Test Runner & Monitor.
+
+INSTRUCTIONS:
+
+1. READ governance files:
+   - D:\Jasmine\00001_Content_app\News_Update\claude.md
+   - D:\Jasmine\00001_Content_app\News_Update\docs\project_state.json
+
+2. YOUR ASSIGNMENT:
+   - Monitor all 3 CLIs working in parallel
+   - Re-run tests after CLI 1 adds new tests
+   - Validate coverage improvements
+   - Track progress
+   - Generate reports
+
+3. MONITORING PROTOCOL:
+
+   LOOP (Every 60 seconds):
+
+   A. Read project_state.json
+   B. Check for updates from CLI 1, 2, 3
+   C. If CLI 1 updated tests → Run tests + coverage
+   D. If CLI 2 added integration tests → Run integration suite
+   E. If CLI 3 completed communication tests → Verify results
+   F. Update test results in project_state.json
+   G. Log all activities to logs/cli_4.log
+   H. Sleep 60 seconds
+   I. GOTO A
+
+4. TEST EXECUTION COMMANDS:
+
+   A. After CLI 1 Updates (Coverage tests):
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/ --cov=src --cov-report=term-missing --cov-report=html:testing/coverage_html -v
+
+   B. After CLI 2 Updates (Integration tests):
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/integration/ -v --tb=short
+
+   C. Full Test Suite (Periodic):
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/ -v --tb=short
+
+   D. Coverage Report Only:
+   cd D:\Jasmine\00001_Content_app\News_Update
+   python -m pytest testing/test_cases/ --cov=src --cov-report=term-missing -q
+
+5. WHAT TO MONITOR:
+
+   CLI 1 Milestones:
+   - Check: News scraper tests added
+   - Check: Coverage increased
+   - Verify: All tests still pass
+   - Target: 90%+ coverage achieved
+
+   CLI 2 Milestones:
+   - Check: Integration tests added
+   - Check: Component interactions validated
+   - Verify: Integration suite passes
+   - Target: 20-30 new integration tests
+
+   CLI 3 Milestones:
+   - Check: Telegram test completed
+   - Check: Email test completed
+   - Check: Report generated
+   - Verify: Real API tests successful
+
+6. REPORTING REQUIREMENTS:
+
+   Generate after each test run:
+   - Test pass/fail summary
+   - Coverage percentage (current vs target)
+   - New tests added count
+   - Failed tests (if any)
+   - Performance metrics (test duration)
+
+   Update these files:
+   - logs/cli_4.log (continuous log)
+   - docs/project_state.json (test_results section)
+   - testing/reports/test_summary_YYYYMMDD_HHMMSS.txt (periodic)
+
+7. ISSUE GENERATION:
+
+   If tests fail:
+   - Generate issue file: testing/issues/issue_YYYYMMDD_HHMMSS.md
+   - Include: Error details, stack trace, affected CLI
+   - Notify: Update project_state.json with blocker
+   - Escalate: Log as HIGH priority
+
+8. DEFINITION OF DONE:
+
+   Phase 05B Complete When:
+   ✅ CLI 1: Coverage reaches 90%+
+   ✅ CLI 2: Integration tests complete
+   ✅ CLI 3: Communication tests pass
+   ✅ All tests passing (no failures)
+   ✅ Final report generated
+
+9. FILES YOU MAY WRITE TO:
+   - logs/cli_4.log (continuous updates)
+   - docs/project_state.json (test_results section only)
+   - testing/reports/test_summary_*.txt (reports)
+   - testing/issues/issue_*.md (if failures detected)
+
+10. COORDINATION:
+    - NEVER block other CLIs unless tests fail
+    - Provide real-time feedback on test status
+    - Update project_state.json after every test run
+    - Generate final report when all CLIs complete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SAMPLE MONITORING SCRIPT:
+
+#!/bin/bash
+while true; do
+    echo "[$(date)] CLI 4: Checking for updates..."
+
+    # Run full test suite
+    pytest testing/test_cases/ --cov=src --cov-report=term-missing -q
+
+    # Check coverage
+    coverage=$(pytest testing/test_cases/ --cov=src --cov-report=term | grep TOTAL | awk '{print $4}')
+
+    echo "[$(date)] Current coverage: $coverage"
+
+    # Sleep 60 seconds
+    sleep 60
+done
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTE NOW: BEGIN MONITORING & TEST EXECUTION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
