@@ -84,10 +84,14 @@ def main():
     github_token = os.getenv('GH_TOKEN')
     github_repo = os.getenv('GITHUB_REPO', 'aijasminekaur11/khabri')
 
+    # Check Claude API
+    claude_api_key = os.getenv('ANTHROPIC_API_KEY')
+
     print(f"📋 Configuration:")
     print(f"   Repository: {github_repo}")
     print(f"   Bot Token: {bot_token[:10]}..." if bot_token else "   Bot Token: NOT SET")
     print(f"   GitHub Token: {'✅ SET' if github_token else '❌ NOT SET'}")
+    print(f"   Claude API: {'✅ SET (AI-powered analysis enabled)' if claude_api_key else '⚠️  NOT SET (manual review only)'}")
     print()
 
     # Create and run bot
