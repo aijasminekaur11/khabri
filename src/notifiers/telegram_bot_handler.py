@@ -130,6 +130,41 @@ class TelegramBotHandler:
             logger.error(f"Error sending message: {e}")
             return False
 
+    def _add_label_to_issue(self, issue_number: int, label: str) -> bool:
+        """
+        Add a label to a GitHub issue
+
+        Args:
+            issue_number: Issue number
+            label: Label to add
+
+        Returns:
+            True if successful
+        """
+        if not self.github_token:
+            return False
+
+        url = f"{self.github_api}/repos/{self.github_repo}/issues/{issue_number}/labels"
+
+        headers = {
+            'Authorization': f'token {self.github_token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
+        payload = {'labels': [label]}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            if response.status_code == 200:
+                logger.info(f"Added label '{label}' to issue #{issue_number}")
+                return True
+            else:
+                logger.warning(f"Failed to add label: {response.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Error adding label: {e}")
+            return False
+
     def _add_issue_comment(self, issue_number: int, comment_body: str) -> bool:
         """
         Add a comment to a GitHub issue
@@ -318,14 +353,18 @@ Please analyze and fix the issue described above. Follow these steps:
             issue_url = issue['html_url']
             issue_number = issue['number']
 
+            # Add 'auto-fix' label AFTER issue creation to trigger GitHub Actions
+            self._add_label_to_issue(issue_number, 'auto-fix')
+
             # Send initial success message
-            analyzing_msg = "🤖 Claude is analyzing..." if self.claude_fixer else ""
-            self.send_message(
-                chat_id,
-                f"✅ **Issue #{issue_number} created!**\n\n"
-                f"🔗 {issue_url}\n\n"
-                f"{analyzing_msg}"
-            )
+            msg_lines = [
+                f"✅ **Issue #{issue_number} created!**",
+                "",
+                f"🔗 {issue_url}",
+            ]
+            if self.claude_fixer:
+                msg_lines.extend(["", "🤖 Claude is analyzing..."])
+            self.send_message(chat_id, "\n".join(msg_lines))
 
             # Use Claude to analyze the issue if available
             if self.claude_fixer:
