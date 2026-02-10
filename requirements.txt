@@ -9,7 +9,7 @@ PyYAML>=6.0
 pytz>=2023.3
 
 # Async (used in scripts)
-aiohttp>=3.9.0
+aiohttp>=3.13.3
 
 # Web Scraping
 beautifulsoup4>=4.12.0
@@ -18,6 +18,9 @@ feedparser>=6.0.0
 requests>=2.31.0
 
 # Email (built-in smtplib is used, no external SMTP lib needed)
+
+# AI Integration
+anthropic>=0.18.0  # Claude API for intelligent issue analysis
 
 # Utilities
 python-dateutil>=2.8.0
