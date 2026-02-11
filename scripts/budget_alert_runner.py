@@ -355,17 +355,25 @@ def is_within_event_window(published_str):
         if published.tzinfo is None:
             published = published.replace(tzinfo=IST)
 
-        # Event window: 10:30 AM - 2:30 PM IST on event day (30 min buffer each side)
-        event_start = now_ist.replace(hour=10, minute=30, second=0, microsecond=0)
-        event_end = now_ist.replace(hour=14, minute=30, second=0, microsecond=0)
+        # Convert to IST for comparison
+        published_ist = published.astimezone(IST)
 
-        # Accept articles if published within event window
-        if event_start <= published <= event_end:
+        # Enforce recency: only articles from today or yesterday
+        days_diff = (now_ist.date() - published_ist.date()).days
+        if days_diff > 1:
+            return False
+
+        # Event window: 10:30 AM - 2:30 PM IST on the article's publication date
+        event_start = published_ist.replace(hour=10, minute=30, second=0, microsecond=0)
+        event_end = published_ist.replace(hour=14, minute=30, second=0, microsecond=0)
+
+        # Accept articles if published within event window on their publication date
+        if event_start <= published_ist <= event_end:
             return True
 
         # Also accept articles from last 3 hours (for post-event coverage)
         three_hours_ago = now_ist - timedelta(hours=3)
-        return published >= three_hours_ago
+        return published_ist >= three_hours_ago
     except (ValueError, TypeError) as e:
         logger.warning(f"Could not parse date: {published_str} - {e}")
         # If we can't parse, include it (to avoid missing important news)
@@ -646,10 +654,23 @@ def send_email_alert():
 
     # Send email
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(username, password)
-            server.sendmail(from_email, to_email.split(','), msg.as_string())
+        recipients = [addr.strip() for addr in to_email.split(',') if addr.strip()]
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                server.login(username, password)
+                server.sendmail(from_email, recipients, msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(username, password)
+                server.sendmail(from_email, recipients, msg.as_string())
+
+        # Mark articles as sent to avoid duplicates
+        sent_ids = load_sent_articles()
+        for article in articles:
+            sent_ids.add(article['id'])
+        save_sent_articles(sent_ids)
+
         logger.info(f"Budget email sent! ({len(articles)} articles)")
     except Exception as e:
         logger.error(f"Email send failed: {e}")

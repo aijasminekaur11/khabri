@@ -80,7 +80,7 @@ def main():
     print()
     print("Checking .env.example for consistency:")
     if os.path.exists('.env.example'):
-        with open('.env.example', 'r') as f:
+        with open('.env.example', 'r', encoding='utf-8') as f:
             content = f.read()
             checks = [
                 ('SMTP_HOST', 'SMTP_HOST' in content),

@@ -8,7 +8,7 @@ Generates CompetitorAlert objects when competitors publish content.
 import hashlib
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 import requests
 from bs4 import BeautifulSoup
@@ -95,11 +95,25 @@ class CompetitorTracker:
             link_el = element.select_one(selectors.get('link', 'a'))
             date_el = element.select_one(selectors.get('date', 'time'))
 
-            if title_el and link_el:
+            href = link_el.get('href', '') if link_el else ''
+            if title_el and href:
+                # Try to parse actual publish date from datetime attribute or text
+                published_at = None
+                if date_el:
+                    datetime_attr = date_el.get('datetime')
+                    if datetime_attr:
+                        try:
+                            published_at = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
+                            if published_at.tzinfo is None:
+                                published_at = published_at.replace(tzinfo=timezone.utc)
+                        except (ValueError, TypeError):
+                            pass
+
                 article = {
                     'title': title_el.get_text(strip=True),
-                    'link': link_el.get('href', ''),
-                    'date': date_el.get_text(strip=True) if date_el else None
+                    'link': href,
+                    'date': date_el.get_text(strip=True) if date_el else None,
+                    'published_at': published_at
                 }
                 articles.append(article)
 
@@ -145,7 +159,10 @@ class CompetitorTracker:
         Returns:
             Minutes remaining to beat competitor
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
+        # Ensure published_at is timezone-aware
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
         elapsed = (now - published_at).total_seconds() / 60
         window = max(0, 180 - int(elapsed))  # 3-hour window
         return window
@@ -189,7 +206,12 @@ class CompetitorTracker:
 
                 # Check if this is new
                 if article_id not in self.tracked_articles:
-                    self.tracked_articles[article_id] = datetime.now()
+                    self.tracked_articles[article_id] = datetime.now(timezone.utc)
+
+                    # Use actual publish date if available, otherwise fallback to now
+                    published_at = article.get('published_at') or datetime.now(timezone.utc)
+                    if published_at.tzinfo is None:
+                        published_at = published_at.replace(tzinfo=timezone.utc)
 
                     # Analyze content gap
                     gaps = self._analyze_content_gap(
@@ -203,9 +225,9 @@ class CompetitorTracker:
                             'competitor': source.get('name', 'Unknown'),
                             'article_url': article['link'],
                             'article_title': article['title'],
-                            'published_at': datetime.now(),  # TODO: Parse from article['date']
+                            'published_at': published_at,
                             'gaps': gaps,
-                            'opportunity_window': self._calculate_opportunity_window(datetime.now())
+                            'opportunity_window': self._calculate_opportunity_window(published_at)
                         }
                         alerts.append(alert)
 
@@ -250,10 +272,10 @@ class CompetitorTracker:
         """
         all_alerts = self.track_all_competitors(our_recent_content)
 
-        # Filter for alerts with opportunity window > 120 minutes
+        # Filter for alerts with narrow opportunity window (urgent)
         high_priority = [
             alert for alert in all_alerts
-            if alert['opportunity_window'] >= 120
+            if alert['opportunity_window'] <= 60
         ]
 
         return high_priority

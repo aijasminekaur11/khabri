@@ -144,7 +144,7 @@ class NewsScraper:
             # Build NewsItem
             news_item = {
                 'id': self._generate_id(url),
-                'title': parsed['title'] or 'Untitled',
+                'title': parsed['title'],
                 'url': url,
                 'source': source.get('name', 'Unknown'),
                 'source_id': source_id,

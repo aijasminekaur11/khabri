@@ -117,6 +117,7 @@ jobs:
       - name: 📊 Generate coverage badge
         if: github.ref == 'refs/heads/main'
         run: |
+          pip install coverage-badge
           coverage-badge -o coverage.svg -f
 
   # ================================================================

@@ -33,7 +33,14 @@
       "Bash(git commit:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(coderabbit review:*)"
+      "Bash(coderabbit review:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(wmic process:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell \"Get-Process | Where-Object {$_.ProcessName -eq ''python''} | Select-Object Id, ProcessName, StartTime\")",
+      "Bash(command -v:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

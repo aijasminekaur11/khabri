@@ -194,7 +194,7 @@ class TestConfigValidatorEdgeCases:
 
         errors = ConfigValidator.validate_sources(invalid_config)
         # Validator allows empty configs, only validates structure if present
-        assert len(errors) >= 0
+        assert len(errors) == 0
 
     def test_validate_sources_source_not_dict(self):
         """Test sources validation when source is not a dictionary"""
@@ -206,7 +206,7 @@ class TestConfigValidatorEdgeCases:
 
         errors = ConfigValidator.validate_sources(invalid_config)
         # Validator checks for dict structure in news_sources
-        assert len(errors) >= 0
+        assert len(errors) == 0
 
     def test_validate_sources_missing_required_fields(self):
         """Test sources validation with missing required fields"""

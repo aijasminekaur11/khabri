@@ -20,6 +20,7 @@ import asyncio
 import logging
 import hashlib
 import tempfile
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -78,6 +79,25 @@ def load_competitors():
     return competitors
 
 
+class OrderedSet:
+    """A set that preserves insertion order for correct recency-based pruning."""
+
+    def __init__(self, iterable=None):
+        self._dict = dict.fromkeys(iterable or [])
+
+    def add(self, item):
+        self._dict[item] = None
+
+    def __contains__(self, item):
+        return item in self._dict
+
+    def __len__(self):
+        return len(self._dict)
+
+    def to_list(self):
+        return list(self._dict.keys())
+
+
 def load_seen_articles():
     """Load previously seen article IDs from persistent cache"""
     try:
@@ -88,11 +108,11 @@ def load_seen_articles():
             with open(SEEN_FILE, 'r') as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return set(data)
-                return set(data.get('ids', []))
+                    return OrderedSet(data)
+                return OrderedSet(data.get('ids', []))
     except Exception as e:
         logger.warning(f"Could not load seen articles: {e}")
-    return set()
+    return OrderedSet()
 
 
 def save_seen_articles(seen_ids):
@@ -101,7 +121,8 @@ def save_seen_articles(seen_ids):
         cache_dir = os.path.dirname(SEEN_FILE)
         os.makedirs(cache_dir, exist_ok=True)
 
-        ids_list = list(seen_ids)[-300:]  # Keep last 300
+        # Keep only last 300 IDs to prevent bloat (preserves insertion order)
+        ids_list = seen_ids.to_list()[-300:]
 
         with open(SEEN_FILE, 'w') as f:
             json.dump({
@@ -139,14 +160,17 @@ def scrape_rss_for_competitor(name, url):
             if feed.entries:
                 logger.info(f"  Found RSS: {rss_url} ({len(feed.entries)} entries)")
                 for entry in feed.entries[:10]:
-                    article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
+                    id_source = entry.get('link') or entry.get('id') or (entry.get('title', '') + entry.get('published', ''))
+                    id_source = id_source or uuid.uuid4().hex
+                    article_id = hashlib.md5(id_source.encode()).hexdigest()
 
-                    published_at = datetime.now().isoformat()
+                    published_at = datetime.now(IST).isoformat()
                     if hasattr(entry, 'published_parsed') and entry.published_parsed:
                         try:
-                            published_at = datetime(*entry.published_parsed[:6]).isoformat()
-                        except:
-                            pass
+                            utc_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                            published_at = utc_dt.astimezone(IST).isoformat()
+                        except (ValueError, TypeError, IndexError, AttributeError) as e:
+                            logger.warning(f"Could not parse published date for {entry.get('link', 'unknown')}: {e}")
 
                     articles.append({
                         'id': article_id,
@@ -154,7 +178,7 @@ def scrape_rss_for_competitor(name, url):
                         'url': entry.get('link', ''),
                         'competitor': name,
                         'published_at': published_at,
-                        'scraped_at': datetime.now().isoformat()
+                        'scraped_at': datetime.now(IST).isoformat()
                     })
                 break  # Found working RSS, stop trying
         except Exception as e:
@@ -200,8 +224,8 @@ def scrape_html_for_competitor(name, url):
                         'title': text[:150],
                         'url': href,
                         'competitor': name,
-                        'published_at': datetime.now().isoformat(),
-                        'scraped_at': datetime.now().isoformat()
+                        'published_at': datetime.now(IST).isoformat(),
+                        'scraped_at': datetime.now(IST).isoformat()
                     })
 
             # Limit to 10
@@ -330,7 +354,8 @@ async def send_competitor_alert():
     # Send via Telegram
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         payload = {
             'chat_id': chat_id,
             'text': message,
@@ -338,19 +363,26 @@ async def send_competitor_alert():
             'disable_web_page_preview': True
         }
 
-        async with session.post(url, json=payload) as response:
-            if response.status == 200:
-                logger.info(f"Competitor alert sent! ({new_count} articles)")
+        try:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logger.info(f"Competitor alert sent! ({new_count} articles)")
 
-                # Mark articles as seen
-                seen_ids = load_seen_articles()
-                for article in result.get('articles', []):
-                    seen_ids.add(article['id'])
-                save_seen_articles(seen_ids)
-            else:
-                error = await response.text()
-                logger.error(f"Telegram send failed: {error}")
-                sys.exit(1)
+                    # Mark articles as seen
+                    seen_ids = load_seen_articles()
+                    for article in result.get('articles', []):
+                        seen_ids.add(article['id'])
+                    save_seen_articles(seen_ids)
+                else:
+                    error = await response.text()
+                    logger.error(f"Telegram send failed: {error}")
+                    sys.exit(1)
+        except asyncio.TimeoutError:
+            logger.error("Telegram API request timed out after 30s")
+            sys.exit(1)
+        except aiohttp.ClientError as e:
+            logger.error(f"Telegram API request failed: {e}")
+            sys.exit(1)
 
 
 def format_competitor_alert(result):

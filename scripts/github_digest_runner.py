@@ -24,7 +24,6 @@ import logging
 import hashlib
 import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 # IST timezone (UTC + 5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -165,8 +164,12 @@ def scrape_rss_feeds():
             feed = feedparser.parse(feed_config['url'])
 
             for entry in feed.entries[:10]:  # Limit to 10 per feed
-                # Generate unique ID
-                article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
+                # Generate unique ID (include title/published as fallback for empty links)
+                id_source = entry.get('link', '') or (entry.get('title', '') + entry.get('published', ''))
+                if not id_source:
+                    import uuid
+                    id_source = uuid.uuid4().hex
+                article_id = hashlib.md5(id_source.encode()).hexdigest()
 
                 # Parse date
                 published_at = datetime.now(IST).isoformat()
@@ -174,7 +177,7 @@ def scrape_rss_feeds():
                     try:
                         utc_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
                         published_at = utc_dt.astimezone(IST).isoformat()
-                    except (ValueError, TypeError) as e:
+                    except (ValueError, TypeError, IndexError, AttributeError) as e:
                         logger.warning(f"Could not parse published date for {entry.get('link', 'unknown')}: {e}")
 
                 article = {
@@ -363,7 +366,7 @@ async def send_email():
             articles = json.load(f)
 
     # Format email
-    subject = f"Khabri {digest_type.title()} Digest - {datetime.now().strftime('%B %d, %Y')}"
+    subject = f"Khabri {digest_type.title()} Digest - {datetime.now(IST).strftime('%B %d, %Y')}"
     body = format_email_message(articles, digest_type)
 
     # Send via SMTP
@@ -380,10 +383,18 @@ async def send_email():
     msg.attach(html_part)
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
             server.starttls()
             server.login(username, password)
-            server.sendmail(sender, [recipient], msg.as_string())
+            recipients = [addr.strip() for addr in recipient.split(',') if addr.strip()]
+            server.sendmail(sender, recipients, msg.as_string())
+
+        # Mark articles as sent to avoid duplicates
+        sent_ids = load_sent_articles()
+        for article in articles:
+            if article.get('id'):
+                sent_ids.add(article['id'])
+        save_sent_articles(sent_ids)
 
         logger.info(f"Email digest sent to {recipient}!")
 

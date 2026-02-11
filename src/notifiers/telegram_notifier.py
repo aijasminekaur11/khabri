@@ -106,17 +106,22 @@ class TelegramNotifier(BaseNotifier):
         logger.error("Failed to send Telegram message after all retries")
         return False
 
-    def _split_message(self, text: str) -> List[str]:
+    def _split_message(self, text: str, max_length: int = 0) -> List[str]:
         """
         Split long messages into chunks that fit Telegram's limit
 
         Args:
             text: Message text to split
+            max_length: Maximum chunk length (defaults to MAX_MESSAGE_LENGTH)
 
         Returns:
             List of message chunks
         """
-        if len(text) <= self.MAX_MESSAGE_LENGTH:
+        import textwrap
+
+        limit = max_length or self.MAX_MESSAGE_LENGTH
+
+        if len(text) <= limit:
             return [text]
 
         chunks = []
@@ -124,15 +129,16 @@ class TelegramNotifier(BaseNotifier):
         current_chunk = ""
 
         for line in lines:
-            # Handle single lines longer than MAX_MESSAGE_LENGTH
-            if len(line) > self.MAX_MESSAGE_LENGTH:
+            # Handle single lines longer than limit
+            if len(line) > limit:
                 if current_chunk:
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
-                # Split the long line into segments
-                for i in range(0, len(line), self.MAX_MESSAGE_LENGTH):
-                    chunks.append(line[i:i + self.MAX_MESSAGE_LENGTH])
-            elif len(current_chunk) + len(line) + 1 <= self.MAX_MESSAGE_LENGTH:
+                # Split the long line into word-boundary-aware segments
+                segments = textwrap.wrap(line, width=limit,
+                                        replace_whitespace=False, drop_whitespace=False)
+                chunks.extend(segments if segments else [line[:limit]])
+            elif len(current_chunk) + len(line) + 1 <= limit:
                 current_chunk += line + '\n'
             else:
                 if current_chunk:
@@ -290,12 +296,23 @@ class TelegramNotifier(BaseNotifier):
         """
         try:
             message = self._format_digest(digest)
-            chunks = self._split_message(message)
+
+            # Two-pass split: first pass to estimate chunk count
+            initial_chunks = self._split_message(message)
+            num_chunks = len(initial_chunks)
+
+            if num_chunks <= 1:
+                return self._send_message(message) if message else True
+
+            # Second pass: compute actual prefix length and re-split
+            prefix_len = len(f"*[Continued {num_chunks}/{num_chunks}]*\n\n")
+            chunks = self._split_message(message, max_length=self.MAX_MESSAGE_LENGTH - prefix_len)
 
             success = True
             for i, chunk in enumerate(chunks):
                 if i > 0:
-                    chunk = f"*[Continued {i+1}/{len(chunks)}]*\n\n" + chunk
+                    prefix = f"*[Continued {i+1}/{len(chunks)}]*\n\n"
+                    chunk = prefix + chunk
 
                 if not self._send_message(chunk):
                     success = False
@@ -319,7 +336,18 @@ class TelegramNotifier(BaseNotifier):
         """
         try:
             message = self._format_alert(news)
-            return self._send_message(message)
+
+            chunks = self._split_message(message)
+            if len(chunks) <= 1:
+                return self._send_message(message) if message else True
+
+            success = True
+            for chunk in chunks:
+                if not self._send_message(chunk):
+                    success = False
+                    break
+
+            return success
 
         except Exception as e:
             logger.error(f"Error sending Telegram alert: {e}")

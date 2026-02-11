@@ -52,7 +52,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .khabri_cache
-          key: khabri-budget-sent-${{ github.run_id }}
+          key: khabri-budget-sent-${{ github.ref }}
           restore-keys: |
             khabri-budget-sent-
 
@@ -87,7 +87,7 @@ jobs:
         if: always()
         with:
           path: .khabri_cache
-          key: khabri-budget-sent-${{ github.run_id }}
+          key: khabri-budget-sent-${{ github.ref }}
 
       - name: 📊 Log Results
         if: always()

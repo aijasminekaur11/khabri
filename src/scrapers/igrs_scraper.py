@@ -133,8 +133,11 @@ class IGRSScraper:
         # Generate URL (may be same as source URL)
         url = f"{source['url']}#{record['district']}"
 
+        district = record.get('district') or ''
+        district_tag = district.lower() if isinstance(district, str) and district else ''
+
         news_item = {
-            'id': self._generate_id(url + str(datetime.now().date())),
+            'id': self._generate_id('|'.join([url, str(record.get('district', '')), str(record.get('property_type', '')), str(record.get('date', ''))])),
             'title': title,
             'url': url,
             'source': source.get('name', 'IGRS'),
@@ -145,7 +148,7 @@ class IGRSScraper:
             'scraped_at': datetime.now(),
             'author': 'IGRS Data',
             'image_url': None,
-            'tags': ['igrs', 'property-registration', record['district'].lower()]
+            'tags': ['igrs', 'property-registration'] + ([district_tag] if district_tag else [])
         }
 
         return news_item

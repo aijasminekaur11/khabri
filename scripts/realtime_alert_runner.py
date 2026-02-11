@@ -122,6 +122,25 @@ REALTIME_FEEDS = [
 ]
 
 
+class OrderedSet:
+    """A set that preserves insertion order for correct recency-based pruning."""
+
+    def __init__(self, iterable=None):
+        self._dict = dict.fromkeys(iterable or [])
+
+    def add(self, item):
+        self._dict[item] = None
+
+    def __contains__(self, item):
+        return item in self._dict
+
+    def __len__(self):
+        return len(self._dict)
+
+    def to_list(self):
+        return list(self._dict.keys())
+
+
 def load_sent_articles():
     """Load previously sent article IDs from persistent cache"""
     try:
@@ -132,11 +151,11 @@ def load_sent_articles():
             with open(SENT_FILE, 'r') as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return set(data)
-                return set(data.get('ids', []))
+                    return OrderedSet(data)
+                return OrderedSet(data.get('ids', []))
     except Exception as e:
         logger.warning(f"Could not load sent articles: {e}")
-    return set()
+    return OrderedSet()
 
 
 def save_sent_articles(sent_ids):
@@ -145,7 +164,8 @@ def save_sent_articles(sent_ids):
         cache_dir = os.path.dirname(SENT_FILE)
         os.makedirs(cache_dir, exist_ok=True)
 
-        ids_list = list(sent_ids)[-500:]
+        # Keep only last 500 IDs to prevent bloat (preserves insertion order)
+        ids_list = sent_ids.to_list()[-500:]
 
         with open(SENT_FILE, 'w') as f:
             json.dump({
@@ -170,7 +190,11 @@ def scrape_breaking_news():
             feed = feedparser.parse(feed_config['url'])
 
             for entry in feed.entries[:10]:
-                article_id = hashlib.md5(entry.get('link', '').encode()).hexdigest()
+                id_source = entry.get('link') or entry.get('id') or (entry.get('title', '') + entry.get('published', ''))
+                if not id_source:
+                    import uuid
+                    id_source = uuid.uuid4().hex
+                article_id = hashlib.md5(id_source.encode()).hexdigest()
 
                 published_at = datetime.now(IST).isoformat()
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
@@ -342,7 +366,7 @@ def format_breaking_alert(articles):
     for i, article in enumerate(articles[:5], 1):
         title = html_module.escape(article.get('title', 'No title')[:80])
         url = article.get('url', '')
-        safe_url = html_module.escape(url)
+        safe_url = html_module.escape(url, quote=True)
         keywords = [html_module.escape(kw) for kw in article.get('matched_keywords', [])[:3]]
 
         if url:
