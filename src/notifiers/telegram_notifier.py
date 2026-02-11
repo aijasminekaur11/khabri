@@ -40,12 +40,18 @@ class TelegramNotifier(BaseNotifier):
 
         Args:
             bot_token: Telegram Bot API token (defaults to env TELEGRAM_BOT_TOKEN)
-            chat_id: Telegram chat ID (defaults to env TELEGRAM_CHAT_ID)
+            chat_id: Telegram chat ID(s) - comma-separated (defaults to env TELEGRAM_CHAT_ID)
         """
         self.bot_token = bot_token or os.getenv('TELEGRAM_BOT_TOKEN')
-        self.chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID')
+        chat_id_str = chat_id or os.getenv('TELEGRAM_CHAT_ID', '')
 
-        if not self.bot_token or not self.chat_id:
+        # Support multiple chat IDs (comma-separated)
+        self.chat_ids = [cid.strip() for cid in chat_id_str.split(',') if cid.strip()]
+
+        # Keep backward compatibility with single chat_id
+        self.chat_id = self.chat_ids[0] if self.chat_ids else None
+
+        if not self.bot_token or not self.chat_ids:
             logger.warning("Telegram credentials not configured. Notifier will not function.")
 
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
@@ -60,51 +66,57 @@ class TelegramNotifier(BaseNotifier):
 
     def _send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         """
-        Send a single message to Telegram with retry logic
+        Send a single message to all configured Telegram chats with retry logic
 
         Args:
             text: Message text
             parse_mode: Parsing mode (Markdown or HTML)
 
         Returns:
-            bool: True if sent successfully
+            bool: True if sent successfully to at least one chat
         """
-        if not self.bot_token or not self.chat_id:
+        if not self.bot_token or not self.chat_ids:
             logger.error("Telegram credentials not configured")
             return False
 
         self._rate_limit()
 
-        payload = {
-            'chat_id': self.chat_id,
-            'text': text,
-            'parse_mode': parse_mode,
-            'disable_web_page_preview': True
-        }
+        success_count = 0
 
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                response = requests.post(
-                    f"{self.api_url}/sendMessage",
-                    json=payload,
-                    timeout=10
-                )
+        for chat_id in self.chat_ids:
+            payload = {
+                'chat_id': chat_id,
+                'text': text,
+                'parse_mode': parse_mode,
+                'disable_web_page_preview': True
+            }
 
-                if response.status_code == 200:
-                    logger.info(f"Telegram message sent successfully (attempt {attempt + 1})")
-                    return True
-                else:
-                    logger.warning(f"Telegram API error: {response.status_code} - {response.text}")
+            for attempt in range(self.MAX_RETRIES):
+                try:
+                    response = requests.post(
+                        f"{self.api_url}/sendMessage",
+                        json=payload,
+                        timeout=10
+                    )
 
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Telegram send error (attempt {attempt + 1}): {e}")
+                    if response.status_code == 200:
+                        logger.info(f"Telegram message sent to {chat_id} (attempt {attempt + 1})")
+                        success_count += 1
+                        break
+                    else:
+                        logger.warning(f"Telegram API error for {chat_id}: {response.status_code} - {response.text}")
 
-            if attempt < self.MAX_RETRIES - 1:
-                delay = self.RETRY_DELAY * (2 ** attempt)  # Exponential backoff
-                time.sleep(delay)
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Telegram send error to {chat_id} (attempt {attempt + 1}): {e}")
 
-        logger.error("Failed to send Telegram message after all retries")
-        return False
+                if attempt < self.MAX_RETRIES - 1:
+                    delay = self.RETRY_DELAY * (2 ** attempt)  # Exponential backoff
+                    time.sleep(delay)
+
+            if success_count == 0 or (self.chat_ids.index(chat_id) == len(self.chat_ids) - 1 and success_count == 0):
+                logger.error(f"Failed to send to {chat_id} after all retries")
+
+        return success_count > 0
 
     def _split_message(self, text: str, max_length: int = 0) -> List[str]:
         """

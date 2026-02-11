@@ -9,6 +9,7 @@ This allows users to:
 """
 
 import os
+import time
 import logging
 import requests
 import json
@@ -25,6 +26,9 @@ except ImportError:
     CLAUDE_AVAILABLE = False
     logger.warning("Claude Auto-Fixer not available")
     ClaudeAutoFixer = None
+
+# Back-off delay (seconds) after polling errors to avoid tight loops
+_ERROR_BACKOFF_SECONDS = 5
 
 
 class TelegramBotHandler:
@@ -55,8 +59,20 @@ class TelegramBotHandler:
         self.github_token = github_token or os.getenv('GH_TOKEN')
         self.github_repo = github_repo or os.getenv('GITHUB_REPO', 'aijasminekaur11/khabri')
 
+        if not self.bot_token:
+            logger.error("TELEGRAM_BOT_TOKEN not configured — bot will not function")
+
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
         self.github_api = "https://api.github.com"
+
+        # Authorized chat IDs (from environment) - for command access control
+        authorized_ids_str = os.getenv('TELEGRAM_AUTHORIZED_IDS', os.getenv('TELEGRAM_CHAT_ID', ''))
+        self.authorized_chat_ids = set(cid.strip() for cid in authorized_ids_str.split(',') if cid.strip())
+
+        if self.authorized_chat_ids:
+            logger.info(f"Bot authorization enabled for {len(self.authorized_chat_ids)} chat(s)")
+        else:
+            logger.warning("No authorized chat IDs configured - bot will accept commands from anyone")
 
         # Initialize Claude Auto-Fixer if available
         if CLAUDE_AVAILABLE and ClaudeAutoFixer:
@@ -78,10 +94,11 @@ class TelegramBotHandler:
         Returns:
             List of update objects
         """
-        params = {
+        params: Dict[str, Any] = {
             'timeout': 30,
-            'offset': offset
         }
+        if offset is not None:
+            params['offset'] = offset
 
         try:
             response = requests.get(
@@ -91,13 +108,17 @@ class TelegramBotHandler:
             )
 
             if response.status_code == 200:
-                data = response.json()
+                try:
+                    data = response.json()
+                except (json.JSONDecodeError, ValueError):
+                    logger.error("Invalid JSON response from Telegram getUpdates")
+                    return []
                 return data.get('result', [])
             else:
                 logger.error(f"Failed to get updates: {response.status_code}")
                 return []
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error getting updates: {e}")
             return []
 
@@ -126,7 +147,7 @@ class TelegramBotHandler:
                 timeout=10
             )
             return response.status_code == 200
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error sending message: {e}")
             return False
 
@@ -155,13 +176,13 @@ class TelegramBotHandler:
 
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
-            if response.status_code == 200:
+            if response.status_code in (200, 201):
                 logger.info(f"Added label '{label}' to issue #{issue_number}")
                 return True
             else:
                 logger.warning(f"Failed to add label: {response.status_code}")
                 return False
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error adding label: {e}")
             return False
 
@@ -191,7 +212,7 @@ class TelegramBotHandler:
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=10)
             return response.status_code == 201
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error adding comment: {e}")
             return False
 
@@ -199,7 +220,7 @@ class TelegramBotHandler:
         self,
         title: str,
         body: str,
-        labels: List[str] = None
+        labels: Optional[List[str]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Create a GitHub issue
@@ -243,7 +264,7 @@ class TelegramBotHandler:
                 logger.error(f"Failed to create issue: {response.status_code} - {response.text}")
                 return None
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error creating GitHub issue: {e}")
             return None
 
@@ -284,7 +305,7 @@ class TelegramBotHandler:
                 logger.error(f"Failed to get issues: {response.status_code}")
                 return []
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Error getting issues: {e}")
             return []
 
@@ -373,7 +394,7 @@ Please analyze and fix the issue described above. Follow these steps:
             else:
                 analysis_result = {'success': False, 'message': 'Claude API not configured'}
 
-            if analysis_result['success']:
+            if analysis_result.get('success'):
                 analysis = analysis_result['analysis']
                 tokens_used = analysis_result.get('tokens_used', 0)
 
@@ -520,8 +541,23 @@ Need help? Contact support or check the GitHub repository.
         Returns:
             True if processed successfully
         """
-        chat_id = str(message['chat']['id'])
+        chat_id = str(message.get('chat', {}).get('id', ''))
+        if not chat_id:
+            logger.warning("Received message without chat ID")
+            return False
         text = message.get('text', '')
+
+        # Check authorization (if configured)
+        if self.authorized_chat_ids and chat_id not in self.authorized_chat_ids:
+            logger.warning(f"Unauthorized access attempt from chat_id: {chat_id}")
+            self.send_message(
+                chat_id,
+                "⛔ *Access Denied*\n\n"
+                "You are not authorized to use this bot.\n"
+                "Contact the administrator for access.\n\n"
+                f"Your Chat ID: `{chat_id}`"
+            )
+            return False
 
         # Handle commands
         if text.startswith('/fix'):
@@ -544,6 +580,10 @@ Need help? Contact support or check the GitHub repository.
         Run bot in polling mode (long polling)
         Continuously checks for new messages
         """
+        if not self.bot_token:
+            logger.error("Cannot start polling: TELEGRAM_BOT_TOKEN not set")
+            return
+
         logger.info("Starting Telegram bot polling...")
 
         while True:
@@ -551,7 +591,9 @@ Need help? Contact support or check the GitHub repository.
                 updates = self.get_updates(offset=self.last_update_id + 1)
 
                 for update in updates:
-                    update_id = update['update_id']
+                    update_id = update.get('update_id')
+                    if update_id is None:
+                        continue
                     self.last_update_id = max(self.last_update_id, update_id)
 
                     if 'message' in update:
@@ -562,7 +604,7 @@ Need help? Contact support or check the GitHub repository.
                 break
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
-                # Continue polling even after errors
+                time.sleep(_ERROR_BACKOFF_SECONDS)
 
 
 if __name__ == "__main__":
