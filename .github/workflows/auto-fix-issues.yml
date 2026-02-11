@@ -1,8 +1,8 @@
 # GitHub Actions Workflow for Auto-Fix via Telegram
-# Triggers when issues with 'auto-fix' label are created
-# Runs Claude Code-like automation to fix issues and create PRs
+# Triggers when issues with '[Auto-Fix]' prefix in title are created
+# Runs Claude API automation to fix issues and create PRs
 
-name: 🤖 Auto-Fix via Telegram
+name: "\U0001F916 Auto-Fix via Telegram"
 
 on:
   issues:
@@ -22,9 +22,9 @@ jobs:
   # JOB 1: Validate Issue
   # ================================================================
   validate-issue:
-    name: ✅ Validate Issue
+    name: "\u2705 Validate Issue"
     runs-on: ubuntu-latest
-    if: |
+    if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && startsWith(github.event.issue.title, '[Auto-Fix]'))
     outputs:
@@ -34,282 +34,318 @@ jobs:
       issue_body: ${{ steps.check.outputs.issue_body }}
 
     steps:
-      - name: 📋 Check issue details
+      - name: "\U0001F4CB Check issue details"
         id: check
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          echo "proceed=true" >> $GITHUB_OUTPUT
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
+            echo "issue_number=${{ inputs.issue_number }}" >> "$GITHUB_OUTPUT"
           else
-            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "issue_title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
+            echo "issue_number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+
+            # Safely write multiline title and body via delimiter
+            {
+              echo "issue_title<<GHEOF"
+              echo "$ISSUE_TITLE"
+              echo "GHEOF"
+            } >> "$GITHUB_OUTPUT"
+
+            {
+              echo "issue_body<<GHEOF"
+              echo "$ISSUE_BODY"
+              echo "GHEOF"
+            } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: 💬 Add comment to issue
-        uses: actions/github-script@v6
+      - name: "\U0001F4AC Add comment to issue"
+        uses: actions/github-script@v7
         with:
           script: |
-            const issueNumber = ${{ steps.check.outputs.issue_number }};
+            const issueNumber = Number('${{ steps.check.outputs.issue_number }}');
+            if (isNaN(issueNumber) || issueNumber <= 0) {
+              core.setFailed('Invalid issue number');
+              return;
+            }
 
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: issueNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🤖 **Auto-Fix Started**\n\nI\'m analyzing this issue and will create a fix automatically.\n\n**Steps:**\n1. ✅ Issue validated\n2. ⏳ Analyzing codebase...\n3. ⏳ Creating fix...\n4. ⏳ Running tests...\n5. ⏳ Creating pull request...\n\nYou\'ll be notified when the fix is ready for review.'
+              body: [
+                '\U0001F916 **Auto-Fix Started**',
+                '',
+                "I'm analyzing this issue and will create a fix automatically.",
+                '',
+                '**Steps:**',
+                '1. \u2705 Issue validated',
+                '2. \u23F3 Analyzing codebase...',
+                '3. \u23F3 Creating fix...',
+                '4. \u23F3 Running tests...',
+                '5. \u23F3 Creating pull request...',
+                '',
+                "You'll be notified when the fix is ready for review."
+              ].join('\n')
             });
 
   # ================================================================
   # JOB 2: Analyze and Fix
   # ================================================================
   auto-fix:
-    name: 🔧 Auto-Fix Issue
+    name: "\U0001F527 Auto-Fix Issue"
     runs-on: ubuntu-latest
     needs: validate-issue
     if: needs.validate-issue.outputs.should_proceed == 'true'
 
     steps:
-      - name: 📥 Checkout code
+      - name: "\U0001F4E5 Checkout code"
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
+      - name: "\U0001F40D Set up Python"
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: 📦 Install dependencies
+      - name: "\U0001F4E6 Install dependencies"
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install requests PyGithub anthropic
 
-      - name: 🤖 Generate fix with Claude AI
+      - name: "\U0001F916 Generate fix with Claude AI"
         id: analyze
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          echo "🤖 Running Claude AI auto-fix..."
+          ISSUE_NUM="${{ needs.validate-issue.outputs.issue_number }}"
+          echo "\U0001F916 Running Claude AI auto-fix for issue #${ISSUE_NUM}..."
 
           set +e
-          python scripts/auto_fix_with_claude.py ${{ needs.validate-issue.outputs.issue_number }}
+          python scripts/auto_fix_with_claude.py "$ISSUE_NUM"
           exit_code=$?
           set -e
 
+          echo "analysis_complete=true" >> "$GITHUB_OUTPUT"
+
           if [ $exit_code -eq 0 ]; then
-            echo "analysis_complete=true" >> $GITHUB_OUTPUT
-            echo "fix_applied=true" >> $GITHUB_OUTPUT
+            echo "fix_applied=true" >> "$GITHUB_OUTPUT"
           else
-            echo "analysis_complete=true" >> $GITHUB_OUTPUT
-            echo "fix_applied=false" >> $GITHUB_OUTPUT
+            echo "fix_applied=false" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "fix_branch=auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}" >> $GITHUB_OUTPUT
+          echo "fix_branch=auto-fix-issue-${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
 
-      - name: 🔧 Create fix branch
+      - name: "\U0001F527 Create fix branch and commit"
         if: steps.analyze.outputs.fix_applied == 'true'
+        id: commit_fix
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
 
-          BRANCH_NAME="auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}"
+          ISSUE_NUM="${{ needs.validate-issue.outputs.issue_number }}"
+          BRANCH_NAME="auto-fix-issue-${ISSUE_NUM}"
           git checkout -b "$BRANCH_NAME"
 
-      - name: 📝 Stage all changes made by Claude
-        id: apply_fix
-        if: steps.analyze.outputs.fix_applied == 'true'
-        run: |
-          # Claude script already modified the files
-          # Just stage them for commit
           git add -A
 
-          echo "fix_applied=true" >> $GITHUB_OUTPUT
-
-      - name: 🧪 Run tests
-        id: tests
-        continue-on-error: true
-        run: |
-          # Run smoke tests to ensure nothing is broken
-          pytest testing/test_cases/smoke/ -v --tb=short --maxfail=3 --no-cov || echo "tests_failed=true" >> $GITHUB_OUTPUT
-          echo "tests_run=true" >> $GITHUB_OUTPUT
-
-      - name: 💾 Commit changes
-        if: steps.apply_fix.outputs.fix_applied == 'true'
-        run: |
-          git commit -m "Auto-fix: Resolve issue #${{ needs.validate-issue.outputs.issue_number }}
+          # Only commit if there are staged changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "$(cat <<EOF
+          Auto-fix: Resolve issue #${ISSUE_NUM}
 
           Automated fix applied via Telegram bot request.
-
-          Issue: ${{ needs.validate-issue.outputs.issue_title }}
 
           Changes:
           - Automated analysis and fixes applied
           - Tests run to verify functionality
 
-          Closes #${{ needs.validate-issue.outputs.issue_number }}
+          Closes #${ISSUE_NUM}
 
-          Co-Authored-By: GitHub Actions Bot <actions@github.com>"
+          Co-Authored-By: GitHub Actions Bot <actions@github.com>
+          EOF
+          )"
 
-      - name: 📤 Push branch
-        if: steps.apply_fix.outputs.fix_applied == 'true'
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "\U0001F9EA Run tests"
+        id: tests
+        if: steps.commit_fix.outputs.has_changes == 'true'
+        continue-on-error: true
         run: |
-          BRANCH_NAME="auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}"
+          pytest testing/test_cases/smoke/ -v --tb=short --maxfail=3 --no-cov 2>&1 || true
+          echo "tests_run=true" >> "$GITHUB_OUTPUT"
+
+      - name: "\U0001F4E4 Push branch"
+        if: steps.commit_fix.outputs.has_changes == 'true'
+        run: |
+          ISSUE_NUM="${{ needs.validate-issue.outputs.issue_number }}"
+          BRANCH_NAME="auto-fix-issue-${ISSUE_NUM}"
           git push origin "$BRANCH_NAME"
 
-      - name: 📬 Create Pull Request
-        if: steps.apply_fix.outputs.fix_applied == 'true'
-        uses: actions/github-script@v6
+      - name: "\U0001F4EC Create Pull Request"
+        if: steps.commit_fix.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
         id: create_pr
         with:
           script: |
-            const branchName = `auto-fix-issue-${{ needs.validate-issue.outputs.issue_number }}`;
-            const issueNumber = ${{ needs.validate-issue.outputs.issue_number }};
+            const issueNumber = Number('${{ needs.validate-issue.outputs.issue_number }}');
+            const branchName = `auto-fix-issue-${issueNumber}`;
 
             const { data: pr } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🤖 Auto-fix: Issue #${issueNumber}`,
+              title: `\U0001F916 Auto-fix: Issue #${issueNumber}`,
               head: branchName,
               base: 'main',
-              body: `## 🤖 Automated Fix
-
-            This PR was created automatically in response to issue #${issueNumber} via Telegram bot.
-
-            ### Changes Made
-            - Automated analysis performed
-            - Fixes applied based on issue description
-            - Tests run to verify functionality
-
-            ### Test Results
-            - Smoke Tests: ${{ steps.tests.outputs.tests_failed == 'true' && '❌ Failed' || '✅ Passed' }}
-
-            ### Review Required
-            Please review the changes carefully before merging.
-
-            Closes #${issueNumber}
-
-            ---
-            *Generated automatically via GitHub Actions*
-            `
+              body: [
+                '## \U0001F916 Automated Fix',
+                '',
+                `This PR was created automatically in response to issue #${issueNumber} via Telegram bot.`,
+                '',
+                '### Changes Made',
+                '- Automated analysis performed',
+                '- Fixes applied based on issue description',
+                '- Tests run to verify functionality',
+                '',
+                '### Review Required',
+                'Please review the changes carefully before merging.',
+                '',
+                `Closes #${issueNumber}`,
+                '',
+                '---',
+                '*Generated automatically via GitHub Actions*'
+              ].join('\n')
             });
 
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_url', pr.html_url);
             return pr.number;
 
   # ================================================================
   # JOB 3: Notify via Telegram
   # ================================================================
   notify-telegram:
-    name: 📱 Notify via Telegram
+    name: "\U0001F4F1 Notify via Telegram"
     runs-on: ubuntu-latest
     needs: [validate-issue, auto-fix]
-    if: always()
+    if: always() && needs.validate-issue.result == 'success'
 
     steps:
-      - name: 📥 Checkout code
+      - name: "\U0001F4E5 Checkout code"
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
+      - name: "\U0001F40D Set up Python"
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: 📦 Install dependencies
+      - name: "\U0001F4E6 Install dependencies"
         run: |
           pip install requests
 
-      - name: 📱 Send Telegram notification
+      - name: "\U0001F4F1 Send Telegram notification"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ISSUE_NUMBER: ${{ needs.validate-issue.outputs.issue_number }}
+          JOB_STATUS: ${{ needs.auto-fix.result }}
+          REPO_NAME: ${{ github.repository }}
         run: |
-          python - <<EOF
-          import requests
-          import os
+          python -c "
+          import requests, os, sys
 
-          bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-          chat_id = os.getenv('TELEGRAM_CHAT_ID')
+          bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+          chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
 
           if not bot_token or not chat_id:
-              print("Telegram credentials not configured")
-              exit(0)
+              print('Telegram credentials not configured')
+              sys.exit(0)
 
-          issue_number = "${{ needs.validate-issue.outputs.issue_number }}"
-          job_status = "${{ needs.auto-fix.result }}"
+          issue_number = os.environ.get('ISSUE_NUMBER', 'unknown')
+          job_status = os.environ.get('JOB_STATUS', 'unknown')
+          repo_name = os.environ.get('REPO_NAME', '')
 
-          if job_status == "success":
-              message = f"""✅ **Auto-Fix Complete!**
-
-          📋 Issue #{issue_number} has been fixed automatically.
-
-          🔗 Check the Pull Request on GitHub to review and merge.
-
-          Repository: ${{ github.repository }}
-          """
+          if job_status == 'success':
+              message = (
+                  f'Auto-Fix Complete!\n\n'
+                  f'Issue #{issue_number} has been fixed automatically.\n\n'
+                  f'Check the Pull Request on GitHub to review and merge.\n\n'
+                  f'Repository: {repo_name}'
+              )
           else:
-              message = f"""⚠️ **Auto-Fix Failed**
+              message = (
+                  f'Auto-Fix Update\n\n'
+                  f'Issue #{issue_number} could not be fixed automatically.\n\n'
+                  f'The issue requires manual review.\n\n'
+                  f'Repository: {repo_name}'
+              )
 
-          📋 Issue #{issue_number} could not be fixed automatically.
-
-          The issue requires manual review. Please check the GitHub issue for details.
-
-          Repository: ${{ github.repository }}
-          """
-
-          api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-
-          payload = {
-              'chat_id': chat_id,
-              'text': message,
-              'parse_mode': 'Markdown'
-          }
-
-          response = requests.post(api_url, json=payload)
+          api_url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+          payload = {'chat_id': chat_id, 'text': message}
+          response = requests.post(api_url, json=payload, timeout=10)
 
           if response.status_code == 200:
-              print("Telegram notification sent successfully")
+              print('Telegram notification sent successfully')
           else:
-              print(f"Failed to send notification: {response.status_code}")
-          EOF
+              print(f'Failed to send notification: {response.status_code}')
+          "
 
-      - name: 💬 Update issue with results
-        uses: actions/github-script@v6
+      - name: "\U0001F4AC Update issue with results"
+        uses: actions/github-script@v7
         with:
           script: |
-            const issueNumber = ${{ needs.validate-issue.outputs.issue_number }};
-            const jobStatus = "${{ needs.auto-fix.result }}";
+            const issueNumber = Number('${{ needs.validate-issue.outputs.issue_number }}');
+            const jobStatus = '${{ needs.auto-fix.result }}';
 
-            let comment = "";
-
-            if (jobStatus === "success") {
-              comment = `✅ **Auto-Fix Completed**
-
-            A pull request has been created with the automated fix.
-
-            **Next Steps:**
-            1. Review the PR changes
-            2. Verify the fix resolves the issue
-            3. Merge the PR if everything looks good
-
-            You'll receive a Telegram notification with the PR link.`;
-            } else {
-              comment = `❌ **Auto-Fix Failed**
-
-            The automated fix could not be applied. This issue requires manual review.
-
-            **Possible reasons:**
-            - Issue description needs more details
-            - Complex changes required
-            - Manual intervention needed
-
-            A developer will review this issue shortly.`;
+            if (isNaN(issueNumber) || issueNumber <= 0) {
+              core.warning('Invalid issue number, skipping comment');
+              return;
             }
 
-            github.rest.issues.createComment({
+            let comment = '';
+
+            if (jobStatus === 'success') {
+              comment = [
+                '\u2705 **Auto-Fix Completed**',
+                '',
+                'A pull request has been created with the automated fix.',
+                '',
+                '**Next Steps:**',
+                '1. Review the PR changes',
+                '2. Verify the fix resolves the issue',
+                '3. Merge the PR if everything looks good',
+                '',
+                "You'll receive a Telegram notification with the PR link."
+              ].join('\n');
+            } else {
+              comment = [
+                '\u274C **Auto-Fix Failed**',
+                '',
+                'The automated fix could not be applied. This issue requires manual review.',
+                '',
+                '**Possible reasons:**',
+                '- Issue description needs more details',
+                '- Complex changes required',
+                '- Manual intervention needed',
+                '',
+                'A developer will review this issue shortly.'
+              ].join('\n');
+            }
+
+            await github.rest.issues.createComment({
               issue_number: issueNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,

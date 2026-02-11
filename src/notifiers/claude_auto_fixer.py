@@ -30,10 +30,10 @@ class ClaudeAutoFixer:
             logger.warning(f"Checked environment variable: ANTHROPIC_API_KEY = {os.getenv('ANTHROPIC_API_KEY')}")
             self.client = None
         else:
-            logger.info(f"Claude API initialized with key: {self.api_key[:20]}...")
+            logger.info("Claude API initialized")
             self.client = Anthropic(api_key=self.api_key)
 
-    def analyze_issue(self, issue_title: str, issue_body: str, repo_context: Dict[str, Any] = None) -> Dict[str, Any]:
+    def analyze_issue(self, issue_title: str, issue_body: str, repo_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Analyze an issue and generate a fix plan
 
@@ -88,19 +88,21 @@ Be concise but thorough."""
 
             # Call Claude API
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",  # Latest Sonnet model
+                model="claude-sonnet-4-5-20250929",  # Latest Sonnet model
                 max_tokens=2000,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
             )
 
+            if not message.content:
+                raise RuntimeError("Empty response from Claude API")
             analysis = message.content[0].text
 
             return {
                 'success': True,
                 'analysis': analysis,
-                'model': 'claude-sonnet-4',
+                'model': 'claude-sonnet-4.5',
                 'tokens_used': message.usage.input_tokens + message.usage.output_tokens
             }
 
@@ -156,13 +158,15 @@ Be concise but thorough."""
 Return the complete fixed file content."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=4000,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
             )
 
+            if not message.content:
+                raise RuntimeError("Empty response from Claude API")
             fixed_code = message.content[0].text
 
             # Clean up markdown code blocks if present
@@ -217,13 +221,15 @@ Format as:
 Keep it brief and professional."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=500,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
             )
 
+            if not message.content:
+                raise RuntimeError("Empty response from Claude API")
             return message.content[0].text
 
         except Exception as e:

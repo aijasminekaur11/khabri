@@ -40,7 +40,17 @@
       "Bash(netstat:*)",
       "Bash(powershell \"Get-Process | Where-Object {$_.ProcessName -eq ''python''} | Select-Object Id, ProcessName, StartTime\")",
       "Bash(command -v:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(npx --yes @coderabbitai/coderabbit:*)",
+      "Bash(coderabbit auth:*)",
+      "Bash(coderabbit:*)",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\(''.github/workflows/auto-fix-issues.yml''\\)\\); print\\(''YAML OK''\\)\")",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\(''scripts/auto_fix_with_claude.py'', doraise=True\\); print\\(''Python OK''\\)\")",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(curl -s \"https://api.telegram.org/bot8380610667:AAFvdgLRdgFLShb4J-lhO6cQ_ToAuJyukv8/getMe\")"
     ],
     "deny": [],
     "ask": []
