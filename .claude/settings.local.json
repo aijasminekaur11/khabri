@@ -50,7 +50,8 @@
       "Bash(python3 -c \"import py_compile; py_compile.compile\\(''scripts/auto_fix_with_claude.py'', doraise=True\\); print\\(''Python OK''\\)\")",
       "Bash(python3:*)",
       "Bash(pip3 install:*)",
-      "Bash(curl -s \"https://api.telegram.org/bot8380610667:AAFvdgLRdgFLShb4J-lhO6cQ_ToAuJyukv8/getMe\")"
+      "Bash(curl -s \"https://api.telegram.org/bot8380610667:AAFvdgLRdgFLShb4J-lhO6cQ_ToAuJyukv8/getMe\")",
+      "Bash(scriptssetup_github_secrets.bat)"
     ],
     "deny": [],
     "ask": []
