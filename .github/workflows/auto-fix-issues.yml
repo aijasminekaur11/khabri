@@ -2,7 +2,7 @@ name: "Auto-Fix via Telegram"
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 permissions:
   contents: write
