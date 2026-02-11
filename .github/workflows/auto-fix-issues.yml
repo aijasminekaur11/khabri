@@ -14,6 +14,12 @@ on:
         required: true
         type: number
 
+# Grant permissions for GitHub Actions to interact with issues and PRs
+permissions:
+  contents: write      # Push commits and branches
+  issues: write        # Create comments on issues
+  pull-requests: write # Create and manage pull requests
+
 env:
   PYTHON_VERSION: '3.9'
 
