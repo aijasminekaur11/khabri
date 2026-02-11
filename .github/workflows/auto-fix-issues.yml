@@ -1,222 +1,72 @@
-# Full Auto-Fix Workflow - Zero Manual Intervention
-# Everything auto-commits to main and deploys via Railway
-
-name: "🤖 Auto-Fix via Telegram"
+name: "Auto-Fix via Telegram"
 
 on:
   issues:
     types: [opened, labeled]
-  workflow_dispatch:
-    inputs:
-      issue_number:
-        description: 'Issue number to fix'
-        required: true
-        type: number
 
 permissions:
   contents: write
   issues: write
-  pull-requests: write
 
 env:
   PYTHON_VERSION: '3.9'
 
 jobs:
   auto-fix:
-    name: "🚀 Auto-Fix and Deploy"
+    name: "Auto-Fix and Deploy"
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && startsWith(github.event.issue.title, '[Auto-Fix]'))
+    if: github.event_name == 'issues' && startsWith(github.event.issue.title, '[Auto-Fix]')
 
     steps:
-      - name: "📥 Checkout code"
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: "🐍 Set up Python"
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
 
-      - name: "📦 Install dependencies"
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install requests PyGithub anthropic
+          pip install requests anthropic
 
-      - name: "🤖 Generate and apply fix with Claude AI"
+      - name: Run auto-fix
         id: fix
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ISSUE_NUM="${{ inputs.issue_number }}"
-          else
-            ISSUE_NUM="${{ github.event.issue.number }}"
-          fi
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          echo "Running auto-fix for issue #${ISSUE_NUM}..."
           
-          echo "🤖 Auto-fixing issue #${ISSUE_NUM}..."
+          python scripts/auto_fix_with_claude.py "$ISSUE_NUM" && echo "success=true" >> "$GITHUB_OUTPUT" || echo "success=false" >> "$GITHUB_OUTPUT"
+          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
 
-          set +e
-          python scripts/auto_fix_with_claude.py "$ISSUE_NUM"
-          EXIT_CODE=$?
-          set -e
-
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "success=true" >> "$GITHUB_OUTPUT"
-            echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-            
-            if [ -f AUTO_FIX_SUMMARY.json ]; then
-              SUMMARY=$(python -c "import json; print(json.load(open('AUTO_FIX_SUMMARY.json'))['summary'])" || echo "Fix applied")
-              echo "summary=${SUMMARY}" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "success=false" >> "$GITHUB_OUTPUT"
-            echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: "💾 Commit and deploy to main"
+      - name: Commit to main
         if: steps.fix.outputs.success == 'true'
         run: |
           git config user.name "Khabri Bot"
           git config user.email "bot@khabri.app"
-
-          ISSUE_NUM="${{ steps.fix.outputs.issue_number }}"
-
           git add -A
+          git diff --cached --quiet || (git commit -m "Auto-fix #${{ steps.fix.outputs.issue_number }}" && git push origin main)
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-
-          git commit -m "🤖 Auto-fix: Issue #${ISSUE_NUM}
-
-${{ steps.fix.outputs.summary }}
-
-✅ Automatically fixed and deployed
-Closes #${ISSUE_NUM}
-
-Co-Authored-By: Khabri Bot <bot@khabri.app>"
-
-          git push origin main
-
-          echo "🚀 Pushed to main - Railway will auto-deploy!"
-
-      - name: "📱 Notify via Telegram (Success)"
-        if: always() && steps.fix.outputs.success == 'true'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python << 'PYTHON_EOF'
-          import requests, os
-
-          bot_token = os.environ['TELEGRAM_BOT_TOKEN']
-          chat_ids = os.environ['TELEGRAM_CHAT_ID'].split(',')
-          issue_num = "${{ steps.fix.outputs.issue_number }}"
-
-          message = f"""✅ Auto-Fix Complete!
-
-📋 Issue #{issue_num} has been fixed and deployed automatically.
-
-🚀 Status: LIVE on Railway
-⏱️ Deploy time: ~2 minutes
-
-The fix is now running in production!
-
-${{ steps.fix.outputs.summary }}"""
-
-          for chat_id in chat_ids:
-            chat_id = chat_id.strip()
-            requests.post(
-              f'https://api.telegram.org/bot{bot_token}/sendMessage',
-              json={'chat_id': chat_id, 'text': message},
-              timeout=10
-            )
-          print("✅ Notifications sent to both phones")
-          PYTHON_EOF
-
-      - name: "📱 Notify via Telegram (Failure)"
-        if: always() && steps.fix.outputs.success == 'false'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python << 'PYTHON_EOF'
-          import requests, os
-
-          bot_token = os.environ['TELEGRAM_BOT_TOKEN']
-          chat_ids = os.environ['TELEGRAM_CHAT_ID'].split(',')
-          issue_num = "${{ steps.fix.outputs.issue_number }}"
-
-          message = f"""⚠️ Auto-Fix Needs Attention
-
-📋 Issue #{issue_num} could not be fixed automatically.
-
-This requires manual review. The issue has been logged on GitHub.
-
-View issue: https://github.com/aijasminekaur11/khabri/issues/{issue_num}"""
-
-          for chat_id in chat_ids:
-            chat_id = chat_id.strip()
-            requests.post(
-              f'https://api.telegram.org/bot{bot_token}/sendMessage',
-              json={'chat_id': chat_id, 'text': message},
-              timeout=10
-            )
-          PYTHON_EOF
-
-      - name: "💬 Comment on issue"
+      - name: Notify Telegram
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issueNumber = Number('${{ steps.fix.outputs.issue_number }}');
-            const success = '${{ steps.fix.outputs.success }}' === 'true';
+        run: |
+          python -c "
+          import requests, os
+          token = '${{ secrets.TELEGRAM_BOT_TOKEN }}'
+          for chat_id in '${{ secrets.TELEGRAM_CHAT_ID }}'.split(','):
+              msg = '✅ Fix deployed!' if '${{ steps.fix.outputs.success }}' == 'true' else '⚠️ Fix failed'
+              requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat_id.strip(), 'text': f'{msg} - Issue #${{ steps.fix.outputs.issue_number }}'})
+          "
 
-            let comment = '';
-            if (success) {
-              comment = `✅ **Auto-Fix Deployed!**
-
-Your fix has been automatically applied and deployed to production.
-
-**Status:** ✅ Live on Railway
-**Deploy Time:** ~2 minutes
-
-The changes are now running and both phones have been notified.
-
-This issue is automatically closed.`;
-            } else {
-              comment = `⚠️ **Auto-Fix Failed**
-
-The automated fix could not be completed. This requires manual attention.
-
-**Next Steps:**
-- Review the workflow logs for details
-- Manual fix may be needed
-
-Both phones have been notified.`;
-            }
-
-            await github.rest.issues.createComment({
-              issue_number: issueNumber,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-            if (success) {
-              await github.rest.issues.update({
-                issue_number: issueNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed'
-              });
-            }
+      - name: Close issue
+        if: steps.fix.outputs.success == 'true'
+        run: |
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.fix.outputs.issue_number }} \
+            -d '{"state":"closed"}'
