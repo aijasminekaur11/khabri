@@ -76,6 +76,8 @@ def read_relevant_files():
         'src/processors/news_processor.py',
         'src/scrapers/news_scraper.py',
         'src/notifiers/telegram_notifier.py',
+        '.github/workflows/scheduled-digest.yml',  # For schedule/cron fixes
+        '.github/workflows/realtime-alerts.yml',   # For alert scheduling
     ]
 
     context = {}
