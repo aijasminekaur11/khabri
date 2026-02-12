@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Auto-Fix Script with Claude API
-Automatically fixes GitHub issues using Claude AI to write code
+Auto-Fix Script with Gemini API (Primary) and Claude API (Backup)
+Automatically fixes GitHub issues using AI to write code
 """
 
 import os
@@ -12,7 +12,19 @@ import shlex
 import shutil
 from pathlib import Path
 
-from anthropic import Anthropic
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("Warning: google-generativeai not installed")
+
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    print("Warning: anthropic not installed")
 
 
 # Files that should never be sent as context (may contain secrets)
@@ -81,12 +93,106 @@ def read_relevant_files():
     return context
 
 
+def generate_fix_with_gemini(issue_title, issue_body, code_context):
+    """Use Gemini API to generate actual code fix"""
+
+    api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY not found")
+
+    if not GEMINI_AVAILABLE:
+        raise RuntimeError("google-generativeai package not installed")
+
+    genai.configure(api_key=api_key)
+
+    # Build comprehensive prompt
+    prompt = f"""You are an expert Python developer. You need to fix this GitHub issue by writing actual code.
+
+**Issue Title:** {issue_title}
+
+**Issue Description:**
+{issue_body}
+
+**Current Codebase Context:**
+{json.dumps(code_context, indent=2)}
+
+**Your Task:**
+1. Understand what the issue is asking for
+2. Identify which file(s) need to be modified
+3. Write the COMPLETE FIXED CODE for each file
+4. Return your response in this EXACT JSON format:
+
+{{
+  "analysis": "Brief explanation of what you're fixing",
+  "files_to_modify": [
+    {{
+      "path": "src/path/to/file.py",
+      "action": "modify",
+      "new_content": "COMPLETE FILE CONTENT HERE"
+    }}
+  ],
+  "files_to_create": [
+    {{
+      "path": "src/path/to/newfile.py",
+      "content": "COMPLETE FILE CONTENT HERE"
+    }}
+  ],
+  "test_commands": ["pytest testing/test_cases/...", "..."],
+  "summary": "One-sentence summary of the fix"
+}}
+
+**CRITICAL REQUIREMENTS:**
+- Provide COMPLETE file contents, not just snippets
+- Maintain existing code style and structure
+- Include proper imports and error handling
+- Add comments explaining complex logic
+- Ensure code follows Python best practices
+
+Return ONLY valid JSON, no markdown, no explanations outside the JSON.
+"""
+
+    print("Calling Gemini API to generate fix...")
+
+    model = genai.GenerativeModel('gemini-2.0-flash-exp')
+    response = model.generate_content(prompt)
+
+    if not response.text:
+        raise RuntimeError("Empty response from Gemini API")
+
+    response_text = response.text
+
+    # Parse JSON response — strip markdown fences if present
+    stripped = response_text.strip()
+    if stripped.startswith("```"):
+        first_newline = stripped.find("\n")
+        last_fence = stripped.rfind("```")
+        if first_newline != -1 and last_fence > first_newline:
+            stripped = stripped[first_newline + 1:last_fence].strip()
+
+    try:
+        fix_plan = json.loads(stripped)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse Gemini response as JSON: {e}")
+        print(f"Response (first 500 chars): {stripped[:500]}")
+        raise
+
+    # Validate required keys
+    for key in ('analysis', 'summary'):
+        if key not in fix_plan:
+            raise ValueError(f"Gemini response missing required key: '{key}'")
+
+    return fix_plan
+
+
 def generate_fix_with_claude(issue_title, issue_body, code_context):
-    """Use Claude API to generate actual code fix"""
+    """Use Claude API to generate actual code fix (BACKUP)"""
 
     api_key = os.getenv('ANTHROPIC_API_KEY')
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not found")
+
+    if not ANTHROPIC_AVAILABLE:
+        raise RuntimeError("anthropic package not installed")
 
     client = Anthropic(api_key=api_key)
 
@@ -136,7 +242,7 @@ def generate_fix_with_claude(issue_title, issue_body, code_context):
 Return ONLY valid JSON, no markdown, no explanations outside the JSON.
 """
 
-    print("Calling Claude API to generate fix...")
+    print("Calling Claude API to generate fix (BACKUP)...")
 
     message = client.messages.create(
         model="claude-sonnet-4-5-20250929",
@@ -171,6 +277,31 @@ Return ONLY valid JSON, no markdown, no explanations outside the JSON.
             raise ValueError(f"Claude response missing required key: '{key}'")
 
     return fix_plan
+
+
+def generate_fix_with_ai(issue_title, issue_body, code_context):
+    """Try Gemini first, fallback to Claude if it fails"""
+
+    # Try Gemini first
+    gemini_error = None
+    try:
+        print("\n[PRIMARY] Trying Gemini API...")
+        return generate_fix_with_gemini(issue_title, issue_body, code_context)
+    except Exception as e:
+        gemini_error = str(e)
+        print(f"\n[PRIMARY FAILED] Gemini error: {gemini_error}")
+
+    # Fallback to Claude
+    try:
+        print("\n[BACKUP] Falling back to Claude API...")
+        return generate_fix_with_claude(issue_title, issue_body, code_context)
+    except Exception as claude_error:
+        print(f"\n[BACKUP FAILED] Claude error: {claude_error}")
+        raise RuntimeError(
+            f"Both AI providers failed.\n"
+            f"Gemini error: {gemini_error}\n"
+            f"Claude error: {claude_error}"
+        )
 
 
 def _is_safe_path(path, root):
@@ -398,9 +529,9 @@ def main():
         code_context = read_relevant_files()
         print(f"   Loaded {len(code_context)} files for context")
 
-        # Step 3: Generate fix with Claude
-        print("\nGenerating fix with Claude AI...")
-        fix_plan = generate_fix_with_claude(
+        # Step 3: Generate fix with AI (Gemini primary, Claude backup)
+        print("\nGenerating fix with AI...")
+        fix_plan = generate_fix_with_ai(
             issue['title'],
             issue.get('body') or '',
             code_context
