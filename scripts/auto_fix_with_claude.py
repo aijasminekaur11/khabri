@@ -147,7 +147,7 @@ def generate_fix_with_claude(issue_title, issue_body, code_context):
       "content": "COMPLETE FILE CONTENT HERE"
     }}
   ],
-  "test_commands": ["pytest testing/test_cases/...", "..."],
+  "test_commands": [],
   "summary": "One-sentence summary of the fix"
 }}
 
@@ -157,6 +157,7 @@ def generate_fix_with_claude(issue_title, issue_body, code_context):
 - Include proper imports and error handling
 - Add comments explaining complex logic
 - Ensure code follows Python best practices
+- IMPORTANT: Set "test_commands" to an empty array []. Do NOT include any test commands.
 
 Return ONLY valid JSON, no markdown, no explanations outside the JSON.
 """
@@ -262,7 +263,7 @@ def generate_fix_with_kimi(issue_title, issue_body, code_context):
       "content": "COMPLETE FILE CONTENT HERE"
     }}
   ],
-  "test_commands": ["pytest testing/test_cases/...", "..."],
+  "test_commands": [],
   "summary": "One-sentence summary of the fix"
 }}
 
