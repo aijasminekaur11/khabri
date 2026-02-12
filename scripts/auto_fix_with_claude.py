@@ -294,28 +294,10 @@ Return ONLY valid JSON, no markdown, no explanations outside the JSON.
 
 
 def generate_fix_with_ai(issue_title, issue_body, code_context):
-    """Try Kimi first, fallback to Claude if it fails"""
+    """Use Claude API to generate fixes"""
 
-    # Try Kimi first
-    kimi_error = None
-    try:
-        print("\n[PRIMARY] Trying Kimi API...")
-        return generate_fix_with_kimi(issue_title, issue_body, code_context)
-    except Exception as e:
-        kimi_error = str(e)
-        print(f"\n[PRIMARY FAILED] Kimi error: {kimi_error}")
-
-    # Fallback to Claude
-    try:
-        print("\n[BACKUP] Falling back to Claude API...")
-        return generate_fix_with_claude(issue_title, issue_body, code_context)
-    except Exception as claude_error:
-        print(f"\n[BACKUP FAILED] Claude error: {claude_error}")
-        raise RuntimeError(
-            f"Both AI providers failed.\n"
-            f"Kimi error: {kimi_error}\n"
-            f"Claude error: {claude_error}"
-        )
+    print("\n[Using Claude API for auto-fix]")
+    return generate_fix_with_claude(issue_title, issue_body, code_context)
 
 
 def _is_safe_path(path, root):
