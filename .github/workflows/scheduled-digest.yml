@@ -9,11 +9,11 @@ name: 📰 Scheduled News Digest
 
 on:
   schedule:
-    # Morning Digest - 6:50 AM IST = 1:20 AM UTC
-    - cron: '20 1 * * *'
+    # Morning Digest - 7:05 AM IST = 1:35 AM UTC
+    - cron: '35 1 * * *'
 
-    # Evening Digest - 4:10 PM IST = 10:40 AM UTC
-    - cron: '40 10 * * *'
+    # Evening Digest - 4:07 PM IST = 10:37 AM UTC
+    - cron: '37 10 * * *'
 
   # Allow manual trigger for testing
   workflow_dispatch:
@@ -70,8 +70,8 @@ jobs:
             echo "type=${{ github.event.inputs.digest_type }}" >> $GITHUB_OUTPUT
           else
             # Check current UTC hour to determine digest type
-            # Morning: 1:30 AM UTC (7 AM IST) - runs between 0-5 UTC
-            # Evening: 10:30 AM UTC (4 PM IST) - runs between 6-15 UTC
+            # Morning: 1:35 AM UTC (7:05 AM IST) - runs between 0-5 UTC
+            # Evening: 10:37 AM UTC (4:07 PM IST) - runs between 6-15 UTC
             HOUR=$(date -u +%H)
             if [ "$HOUR" -lt "6" ]; then
               echo "type=morning" >> $GITHUB_OUTPUT

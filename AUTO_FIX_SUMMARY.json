@@ -1,13 +1,12 @@
 {
   "success": true,
-  "issue_number": 22,
+  "issue_number": 23,
   "modified_files": [
-    "/home/runner/work/khabri/khabri/src/config/config_manager.py",
-    "/home/runner/work/khabri/khabri/src/scheduler/timezone_scheduler.py"
+    "/home/runner/work/khabri/khabri/.github/workflows/scheduled-digest.yml"
   ],
   "tests_passed": true,
-  "summary": "Fixed timezone handling for daily news digests by adding IST timezone support and creating a timezone-aware scheduler that properly converts between UTC and IST for 6:50 AM and 4:10 PM scheduled digests.",
+  "summary": "Updated scheduled digest times to 7:05 AM IST (1:35 AM UTC) and 4:07 PM IST (10:37 AM UTC) as requested.",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~426 lines)",
+  "size_reason": "Too many lines changed (~143 lines)",
   "auto_commit": false
 }
