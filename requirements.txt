@@ -20,7 +20,7 @@ requests>=2.31.0
 # Email (built-in smtplib is used, no external SMTP lib needed)
 
 # AI Integration
-google-generativeai>=0.8.0  # Gemini API (primary) for intelligent issue analysis
+openai>=1.0.0  # For Kimi API (primary) - OpenAI-compatible
 anthropic>=0.18.0  # Claude API (backup) for intelligent issue analysis
 
 # Utilities

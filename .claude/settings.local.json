@@ -51,7 +51,10 @@
       "Bash(python3:*)",
       "Bash(pip3 install:*)",
       "Bash(curl -s \"https://api.telegram.org/bot8380610667:AAFvdgLRdgFLShb4J-lhO6cQ_ToAuJyukv8/getMe\")",
-      "Bash(scriptssetup_github_secrets.bat)"
+      "Bash(scriptssetup_github_secrets.bat)",
+      "Bash(curl:*)",
+      "Bash(npm i:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

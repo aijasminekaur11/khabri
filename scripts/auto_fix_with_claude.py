@@ -13,11 +13,11 @@ import shutil
 from pathlib import Path
 
 try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
-    print("Warning: google-generativeai not installed")
+    OPENAI_AVAILABLE = False
+    print("Warning: openai not installed")
 
 try:
     from anthropic import Anthropic
@@ -93,95 +93,7 @@ def read_relevant_files():
     return context
 
 
-def generate_fix_with_gemini(issue_title, issue_body, code_context):
-    """Use Gemini API to generate actual code fix"""
-
-    api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY not found")
-
-    if not GEMINI_AVAILABLE:
-        raise RuntimeError("google-generativeai package not installed")
-
-    genai.configure(api_key=api_key)
-
-    # Build comprehensive prompt
-    prompt = f"""You are an expert Python developer. You need to fix this GitHub issue by writing actual code.
-
-**Issue Title:** {issue_title}
-
-**Issue Description:**
-{issue_body}
-
-**Current Codebase Context:**
-{json.dumps(code_context, indent=2)}
-
-**Your Task:**
-1. Understand what the issue is asking for
-2. Identify which file(s) need to be modified
-3. Write the COMPLETE FIXED CODE for each file
-4. Return your response in this EXACT JSON format:
-
-{{
-  "analysis": "Brief explanation of what you're fixing",
-  "files_to_modify": [
-    {{
-      "path": "src/path/to/file.py",
-      "action": "modify",
-      "new_content": "COMPLETE FILE CONTENT HERE"
-    }}
-  ],
-  "files_to_create": [
-    {{
-      "path": "src/path/to/newfile.py",
-      "content": "COMPLETE FILE CONTENT HERE"
-    }}
-  ],
-  "test_commands": ["pytest testing/test_cases/...", "..."],
-  "summary": "One-sentence summary of the fix"
-}}
-
-**CRITICAL REQUIREMENTS:**
-- Provide COMPLETE file contents, not just snippets
-- Maintain existing code style and structure
-- Include proper imports and error handling
-- Add comments explaining complex logic
-- Ensure code follows Python best practices
-
-Return ONLY valid JSON, no markdown, no explanations outside the JSON.
-"""
-
-    print("Calling Gemini API to generate fix...")
-
-    model = genai.GenerativeModel('gemini-2.0-flash-exp')
-    response = model.generate_content(prompt)
-
-    if not response.text:
-        raise RuntimeError("Empty response from Gemini API")
-
-    response_text = response.text
-
-    # Parse JSON response — strip markdown fences if present
-    stripped = response_text.strip()
-    if stripped.startswith("```"):
-        first_newline = stripped.find("\n")
-        last_fence = stripped.rfind("```")
-        if first_newline != -1 and last_fence > first_newline:
-            stripped = stripped[first_newline + 1:last_fence].strip()
-
-    try:
-        fix_plan = json.loads(stripped)
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse Gemini response as JSON: {e}")
-        print(f"Response (first 500 chars): {stripped[:500]}")
-        raise
-
-    # Validate required keys
-    for key in ('analysis', 'summary'):
-        if key not in fix_plan:
-            raise ValueError(f"Gemini response missing required key: '{key}'")
-
-    return fix_plan
+# Gemini function removed - using Kimi instead
 
 
 def generate_fix_with_claude(issue_title, issue_body, code_context):
@@ -279,17 +191,119 @@ Return ONLY valid JSON, no markdown, no explanations outside the JSON.
     return fix_plan
 
 
-def generate_fix_with_ai(issue_title, issue_body, code_context):
-    """Try Gemini first, fallback to Claude if it fails"""
+def generate_fix_with_kimi(issue_title, issue_body, code_context):
+    """Use Kimi API to generate actual code fix"""
 
-    # Try Gemini first
-    gemini_error = None
+    api_key = os.getenv('KIMI_API_KEY')
+    if not api_key:
+        raise RuntimeError("KIMI_API_KEY not found")
+
+    if not OPENAI_AVAILABLE:
+        raise RuntimeError("openai package not installed")
+
+    # Initialize OpenAI client with Moonshot endpoint
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.moonshot.cn/v1"
+    )
+
+    # Build comprehensive prompt
+    prompt = f"""You are an expert Python developer. You need to fix this GitHub issue by writing actual code.
+
+**Issue Title:** {issue_title}
+
+**Issue Description:**
+{issue_body}
+
+**Current Codebase Context:**
+{json.dumps(code_context, indent=2)}
+
+**Your Task:**
+1. Understand what the issue is asking for
+2. Identify which file(s) need to be modified
+3. Write the COMPLETE FIXED CODE for each file
+4. Return your response in this EXACT JSON format:
+
+{{
+  "analysis": "Brief explanation of what you're fixing",
+  "files_to_modify": [
+    {{
+      "path": "src/path/to/file.py",
+      "action": "modify",
+      "new_content": "COMPLETE FILE CONTENT HERE"
+    }}
+  ],
+  "files_to_create": [
+    {{
+      "path": "src/path/to/newfile.py",
+      "content": "COMPLETE FILE CONTENT HERE"
+    }}
+  ],
+  "test_commands": ["pytest testing/test_cases/...", "..."],
+  "summary": "One-sentence summary of the fix"
+}}
+
+**CRITICAL REQUIREMENTS:**
+- Provide COMPLETE file contents, not just snippets
+- Maintain existing code style and structure
+- Include proper imports and error handling
+- Add comments explaining complex logic
+- Ensure code follows Python best practices
+
+Return ONLY valid JSON, no markdown, no explanations outside the JSON.
+"""
+
+    print("Calling Kimi API to generate fix...")
+
+    response = client.chat.completions.create(
+        model="moonshot-v1-8k",
+        messages=[
+            {"role": "system", "content": "You are an expert Python developer who returns valid JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=8000
+    )
+
+    if not response.choices or not response.choices[0].message.content:
+        raise RuntimeError("Empty response from Kimi API")
+
+    response_text = response.choices[0].message.content
+
+    # Parse JSON response — strip markdown fences if present
+    stripped = response_text.strip()
+    if stripped.startswith("```"):
+        first_newline = stripped.find("\n")
+        last_fence = stripped.rfind("```")
+        if first_newline != -1 and last_fence > first_newline:
+            stripped = stripped[first_newline + 1:last_fence].strip()
+
     try:
-        print("\n[PRIMARY] Trying Gemini API...")
-        return generate_fix_with_gemini(issue_title, issue_body, code_context)
+        fix_plan = json.loads(stripped)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse Kimi response as JSON: {e}")
+        print(f"Response (first 500 chars): {stripped[:500]}")
+        raise
+
+    # Validate required keys
+    for key in ('analysis', 'summary'):
+        if key not in fix_plan:
+            raise ValueError(f"Kimi response missing required key: '{key}'")
+
+    return fix_plan
+
+
+def generate_fix_with_ai(issue_title, issue_body, code_context):
+    """Try Kimi first, fallback to Claude if it fails"""
+
+    # Try Kimi first
+    kimi_error = None
+    try:
+        print("\n[PRIMARY] Trying Kimi API...")
+        return generate_fix_with_kimi(issue_title, issue_body, code_context)
     except Exception as e:
-        gemini_error = str(e)
-        print(f"\n[PRIMARY FAILED] Gemini error: {gemini_error}")
+        kimi_error = str(e)
+        print(f"\n[PRIMARY FAILED] Kimi error: {kimi_error}")
 
     # Fallback to Claude
     try:
@@ -299,7 +313,7 @@ def generate_fix_with_ai(issue_title, issue_body, code_context):
         print(f"\n[BACKUP FAILED] Claude error: {claude_error}")
         raise RuntimeError(
             f"Both AI providers failed.\n"
-            f"Gemini error: {gemini_error}\n"
+            f"Kimi error: {kimi_error}\n"
             f"Claude error: {claude_error}"
         )
 
