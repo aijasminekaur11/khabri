@@ -97,18 +97,25 @@ def read_relevant_files():
 
 
 def generate_fix_with_claude(issue_title, issue_body, code_context):
-    """Use Claude API to generate actual code fix (BACKUP)"""
+    """Use Claude API to generate actual code fix"""
 
+    print("  [Claude] Checking API key...")
     api_key = os.getenv('ANTHROPIC_API_KEY')
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not found")
+    print(f"  [Claude] ✓ API key found (length: {len(api_key)})")
 
+    print("  [Claude] Checking anthropic package...")
     if not ANTHROPIC_AVAILABLE:
         raise RuntimeError("anthropic package not installed")
+    print("  [Claude] ✓ anthropic package available")
 
+    print("  [Claude] Initializing client...")
     client = Anthropic(api_key=api_key)
+    print("  [Claude] ✓ Client initialized")
 
     # Build comprehensive prompt for Claude
+    print("  [Claude] Building prompt...")
     prompt = f"""You are an expert Python developer. You need to fix this GitHub issue by writing actual code.
 
 **Issue Title:** {issue_title}
@@ -153,24 +160,36 @@ def generate_fix_with_claude(issue_title, issue_body, code_context):
 
 Return ONLY valid JSON, no markdown, no explanations outside the JSON.
 """
+    print(f"  [Claude] ✓ Prompt built (length: {len(prompt)} chars)")
 
-    print("Calling Claude API to generate fix (BACKUP)...")
+    print("  [Claude] Calling API...")
+    print(f"  [Claude] → Model: claude-sonnet-4-5-20250929")
+    print(f"  [Claude] → Max tokens: 8000")
 
-    message = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=8000,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=8000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        print("  [Claude] ✓ API call successful")
+    except Exception as api_error:
+        print(f"  [Claude] ✗ API call failed: {api_error}")
+        raise
 
+    print("  [Claude] Processing response...")
     if not message.content:
         raise RuntimeError("Empty response from Claude API")
     response_text = message.content[0].text
+    print(f"  [Claude] ✓ Response received (length: {len(response_text)} chars)")
 
     # Parse JSON response — strip markdown fences if present
+    print("  [Claude] Parsing JSON...")
     stripped = response_text.strip()
     if stripped.startswith("```"):
+        print("  [Claude] → Stripping markdown fences...")
         first_newline = stripped.find("\n")
         last_fence = stripped.rfind("```")
         if first_newline != -1 and last_fence > first_newline:
@@ -178,15 +197,19 @@ Return ONLY valid JSON, no markdown, no explanations outside the JSON.
 
     try:
         fix_plan = json.loads(stripped)
+        print("  [Claude] ✓ JSON parsed successfully")
     except json.JSONDecodeError as e:
-        print(f"Failed to parse Claude response as JSON: {e}")
-        print(f"Response (first 500 chars): {stripped[:500]}")
+        print(f"  [Claude] ✗ Failed to parse JSON: {e}")
+        print(f"  [Claude] → Response (first 500 chars): {stripped[:500]}")
         raise
 
     # Validate required keys
+    print("  [Claude] Validating response structure...")
     for key in ('analysis', 'summary'):
         if key not in fix_plan:
+            print(f"  [Claude] ✗ Missing required key: '{key}'")
             raise ValueError(f"Claude response missing required key: '{key}'")
+    print("  [Claude] ✓ Response structure valid")
 
     return fix_plan
 
@@ -510,100 +533,154 @@ def main():
     print(f"Issue #{issue_number}")
     print("=" * 60)
 
+    # Check environment variables
+    print("\n[STEP 0] Checking environment variables...")
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    gh_token = os.getenv('GH_TOKEN') or os.getenv('GITHUB_TOKEN')
+    if anthropic_key:
+        print(f"  ✓ ANTHROPIC_API_KEY found (length: {len(anthropic_key)})")
+    else:
+        print("  ✗ ANTHROPIC_API_KEY not found!")
+    if gh_token:
+        print(f"  ✓ GH_TOKEN found (length: {len(gh_token)})")
+    else:
+        print("  ✗ GH_TOKEN not found!")
+
+    print(f"  ✓ ANTHROPIC_AVAILABLE: {ANTHROPIC_AVAILABLE}")
+    print(f"  ✓ OPENAI_AVAILABLE: {OPENAI_AVAILABLE}")
+
     backup_paths = []
 
     try:
         # Step 1: Get issue details
-        print("\nFetching issue details from GitHub...")
+        print("\n[STEP 1] Fetching issue details from GitHub...")
         issue = get_issue_details(issue_number)
+        print(f"  ✓ Successfully fetched issue #{issue_number}")
 
-        print(f"   Title: {issue['title']}")
-        print(f"   State: {issue['state']}")
+        print(f"  ✓ Title: {issue['title']}")
+        print(f"  ✓ State: {issue['state']}")
 
         # Step 2: Read codebase context
-        print("\nReading codebase for context...")
+        print("\n[STEP 2] Reading codebase for context...")
         code_context = read_relevant_files()
-        print(f"   Loaded {len(code_context)} files for context")
+        print(f"  ✓ Loaded {len(code_context)} files for context")
 
-        # Step 3: Generate fix with AI (Gemini primary, Claude backup)
-        print("\nGenerating fix with AI...")
+        # Step 3: Generate fix with AI
+        print("\n[STEP 3] Generating fix with Claude AI...")
+        print(f"  → Issue title: {issue['title'][:50]}...")
+        print(f"  → Issue body length: {len(issue.get('body') or '')} chars")
+        print(f"  → Context files: {len(code_context)}")
+
         fix_plan = generate_fix_with_ai(
             issue['title'],
             issue.get('body') or '',
             code_context
         )
+        print(f"  ✓ Fix plan generated successfully")
+        print(f"  → Analysis: {fix_plan.get('analysis', 'N/A')[:100]}...")
 
         # Step 4: Classify change size
-        print("\nClassifying change size...")
+        print("\n[STEP 4] Classifying change size...")
         change_size, size_reason = classify_change_size(
             fix_plan,
             issue['title'],
             issue.get('body') or ''
         )
-        print(f"   Classification: {change_size.upper()}")
-        print(f"   Reason: {size_reason}")
+        print(f"  ✓ Classification: {change_size.upper()}")
+        print(f"  → Reason: {size_reason}")
 
         # Step 5: Apply fixes
-        print("\nApplying fixes...")
+        print("\n[STEP 5] Applying fixes...")
+        print(f"  → Files to modify: {len(fix_plan.get('files_to_modify', []))}")
+        print(f"  → Files to create: {len(fix_plan.get('files_to_create', []))}")
+
         modified_files, backup_paths = apply_fixes(fix_plan)
+        print(f"  ✓ Applied fixes to {len(modified_files)} files")
 
         # Step 6: Run tests
+        print("\n[STEP 6] Running tests...")
         test_commands = fix_plan.get('test_commands', [])
         if test_commands:
+            print(f"  → Test commands: {test_commands}")
             tests_passed = run_tests(test_commands)
         else:
-            print("\nNo tests specified, skipping test verification")
+            print("  → No tests specified, skipping test verification")
             tests_passed = True
 
-        # Step 5b: Clean up backups after successful validation
+        # Step 7: Clean up backups after successful validation
+        print("\n[STEP 7] Cleanup and finalization...")
         if tests_passed:
             cleanup_backups(backup_paths)
+            print("  ✓ Cleaned up backup files")
         else:
-            print("\nTests failed — backup files retained for rollback")
+            print("  ⚠ Tests failed — backup files retained for rollback")
 
-        # Step 6: Output results
+        # Step 8: Output results
         print("\n" + "=" * 60)
-        print("AUTO-FIX COMPLETE!")
+        print("✓ AUTO-FIX COMPLETE!")
         print("=" * 60)
-        print(f"\nModified files:")
+        print(f"\n✓ Modified files:")
         for f in modified_files:
             print(f"  - {f}")
 
-        print(f"\nTests: {'Passed' if tests_passed else 'Failed'}")
-        print(f"\nSummary: {fix_plan['summary']}")
+        print(f"\n✓ Tests: {'PASSED ✓' if tests_passed else 'FAILED ✗'}")
+        print(f"\n✓ Summary: {fix_plan['summary']}")
 
         # Write summary for GitHub Actions
+        print("\n[STEP 8] Writing summary file...")
         summary_file = Path('AUTO_FIX_SUMMARY.json')
+        summary_data = {
+            'success': True,
+            'issue_number': issue_number,
+            'modified_files': modified_files,
+            'tests_passed': tests_passed,
+            'summary': fix_plan['summary'],
+            'change_size': change_size,
+            'size_reason': size_reason,
+            'auto_commit': change_size == 'small'
+        }
         with open(summary_file, 'w') as f:
-            json.dump({
-                'success': True,
-                'issue_number': issue_number,
-                'modified_files': modified_files,
-                'tests_passed': tests_passed,
-                'summary': fix_plan['summary'],
-                'change_size': change_size,
-                'size_reason': size_reason,
-                'auto_commit': change_size == 'small'  # True if small, False if big
-            }, f, indent=2)
+            json.dump(summary_data, f, indent=2)
+        print(f"  ✓ Summary written to {summary_file}")
+        print(f"  → Contents: {json.dumps(summary_data, indent=2)}")
+
+        print("\n" + "=" * 60)
+        print("✓✓✓ SCRIPT COMPLETED SUCCESSFULLY ✓✓✓")
+        print("=" * 60)
 
         sys.exit(0 if tests_passed else 1)
 
     except Exception as e:
-        print(f"\nError: {e}")
+        print("\n" + "=" * 60)
+        print("✗✗✗ ERROR OCCURRED ✗✗✗")
+        print("=" * 60)
+        print(f"\n✗ Error: {e}")
+        print(f"\n✗ Error type: {type(e).__name__}")
+        print("\n✗ Full traceback:")
         import traceback
         traceback.print_exc()
 
         # Clean up backups on failure
+        print("\n[CLEANUP] Removing backup files...")
         cleanup_backups(backup_paths)
 
         # Write failure summary
+        print("\n[WRITING FAILURE SUMMARY]")
         summary_file = Path('AUTO_FIX_SUMMARY.json')
+        error_data = {
+            'success': False,
+            'issue_number': issue_number,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }
         with open(summary_file, 'w') as f:
-            json.dump({
-                'success': False,
-                'issue_number': issue_number,
-                'error': str(e)
-            }, f, indent=2)
+            json.dump(error_data, f, indent=2)
+        print(f"  ✓ Error summary written to {summary_file}")
+        print(f"  → Contents: {json.dumps(error_data, indent=2)}")
+
+        print("\n" + "=" * 60)
+        print("✗✗✗ SCRIPT FAILED ✗✗✗")
+        print("=" * 60)
 
         sys.exit(1)
 
