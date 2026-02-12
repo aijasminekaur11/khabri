@@ -1,177 +1,315 @@
+# =============================================================================
 # Keywords Configuration
-# Khabri - News Intelligence System
-
+# Defines search terms and patterns for news filtering and categorization
 # =============================================================================
-# HIGH PRIORITY KEYWORDS (Immediate Alerts)
-# =============================================================================
-priority_keywords:
-  critical:
-    - "breaking"
-    - "RBI"
-    - "repo rate"
-    - "interest rate cut"
-    - "interest rate hike"
-    - "PMAY"
-    - "stamp duty"
-    - "RERA"
-    - "government scheme"
 
-  high:
-    - "home loan"
-    - "EMI"
-    - "tax benefit"
-    - "80C"
-    - "HRA"
-    - "property tax"
-    - "circle rate"
-    - "ready reckoner"
+# Priority Keywords - Highest importance, trigger immediate alerts
+priority:
+  # Metro & Rail Infrastructure (HIGHEST PRIORITY)
+  metro:
+    - metro
+    - metro line
+    - metro corridor
+    - metro extension
+    - metro station
+    - metro rail
+    - rapid transit
+    - DMRC
+    - Delhi Metro
+    - Mumbai Metro
+    - Bangalore Metro
+    - Namma Metro
+    - Kochi Metro
+    - Lucknow Metro
+    - Jaipur Metro
+    - metro announcement
+    - metro project
+    - metro route
+    - metro alignment
+    - metro approval
 
-# =============================================================================
-# CATEGORY KEYWORDS
-# =============================================================================
-categories:
-  market_updates:
-    - "property price"
-    - "real estate market"
-    - "housing demand"
-    - "sales volume"
-    - "inventory"
-    - "unsold units"
-    - "price appreciation"
-    - "price correction"
-    - "market trend"
-    - "property index"
+  # Expressway & Highway Infrastructure
+  expressway:
+    - expressway
+    - highway
+    - express highway
+    - access controlled highway
+    - NH
+    - national highway
+    - state highway
+    - elevated corridor
+    - bypass
+    - ring road
+    - orbital corridor
+    - greenfield expressway
+    - Delhi-Mumbai Expressway
+    - Mumbai-Nagpur Expressway
+    - Purvanchal Expressway
+    - Bundelkhand Expressway
+    - expressway inauguration
+    - highway project
 
-  policy:
-    - "RERA"
-    - "GST"
-    - "stamp duty"
-    - "registration"
-    - "government policy"
-    - "housing policy"
-    - "affordable housing"
-    - "PMAY"
-    - "Pradhan Mantri"
-    - "subsidy"
+  # Airport Development
+  airport:
+    - airport
+    - international airport
+    - domestic airport
+    - aerocity
+    - airport city
+    - aviation hub
+    - air cargo
+    - airport expansion
+    - new airport
+    - airport development
+    - aerotropolis
+    - airport metro
+    - airport connectivity
+    - terminal expansion
 
-  infrastructure:
-    - "metro"
-    - "airport"
-    - "highway"
-    - "expressway"
-    - "connectivity"
-    - "infrastructure"
-    - "smart city"
-    - "transit"
-    - "development authority"
+# Government Housing Schemes & Development Authorities
+housing_schemes:
+  # DDA (Delhi Development Authority)
+  dda:
+    - DDA
+    - Delhi Development Authority
+    - DDA housing scheme
+    - DDA flats
+    - DDA draw
+    - DDA lottery
+    - DDA land pooling
+    - DDA master plan
+    - DDA affordable housing
+    - DDA registration
 
-  launches:
-    - "new launch"
-    - "project launch"
-    - "new project"
-    - "bookings open"
-    - "pre-launch"
-    - "upcoming project"
+  # MHADA (Maharashtra Housing and Area Development Authority)
+  mhada:
+    - MHADA
+    - MAHADA
+    - Maharashtra Housing
+    - MHADA lottery
+    - MHADA scheme
+    - MHADA flats
+    - MHADA mumbai
+    - MHADA affordable
 
+  # SIDCO (State Industrial Development Corporations)
+  sidco:
+    - SIDCO
+    - State Industrial Development
+    - TIDCO
+    - RIICO
+    - MIDC
+    - industrial township
+    - industrial area development
+
+  # State Development Authorities
+  state_authorities:
+    - development authority
+    - housing board
+    - urban development
+    - HUDA
+    - PUDA
+    - BUDA
+    - GDA
+    - Greater Noida Authority
+    - Noida Authority
+    - Yamuna Authority
+    - new township
+    - smart city
+    - planned city
+    - satellite city
+    - integrated township
+    - master plan
+    - zonal plan
+
+  # PMAY (Pradhan Mantri Awas Yojana)
+  pmay:
+    - PMAY
+    - Pradhan Mantri Awas Yojana
+    - PM Awas Yojana
+    - PMAY Urban
+    - PMAY Gramin
+    - PMAY-U
+    - PMAY-G
+    - affordable housing scheme
+    - EWS housing
+    - LIG housing
+    - Credit Linked Subsidy
+    - CLSS
+    - housing for all
+    - affordable rental housing
+    - ARH
+
+# Celebrity Real Estate Transactions
+celebrity:
+  transactions:
+    - celebrity
+    - actor
+    - actress
+    - cricketer
+    - bollywood
+    - film star
+    - bought property
+    - sold property
+    - celebrity home
+    - celebrity apartment
+    - celebrity office
+    - celebrity villa
+    - rented property
+    - celebrity tenant
+    - celebrity landlord
+    - luxury apartment celebrity
+    - penthouse celebrity
+    - farmhouse celebrity
+    - celebrity real estate
+    - star property
+
+  # Indian Celebrities (Examples - can be expanded)
+  names:
+    - Shah Rukh Khan
+    - Amitabh Bachchan
+    - Akshay Kumar
+    - Salman Khan
+    - Virat Kohli
+    - MS Dhoni
+    - Sachin Tendulkar
+    - Deepika Padukone
+    - Priyanka Chopra
+    - Ranbir Kapoor
+    - Alia Bhatt
+    - Hrithik Roshan
+
+# Policy & Regulatory Changes
+policy:
+  # Building & Construction Laws
+  building_laws:
+    - building bylaws
+    - construction law
+    - building code
+    - NBC
+    - National Building Code
+    - construction regulation
+    - building regulation
+    - FAR
+    - floor area ratio
+    - FSI
+    - floor space index
+    - setback norms
+    - height restriction
+    - building permission
+    - construction permit
+    - occupancy certificate
+    - completion certificate
+    - building approval
+    - DCR
+    - development control rules
+
+  # GST & Tax in Construction
+  gst_construction:
+    - GST construction
+    - GST real estate
+    - GST housing
+    - GST rate construction
+    - construction tax
+    - real estate GST
+    - GST affordable housing
+    - GST input credit
+    - GST compliance construction
+    - stamp duty
+    - registration charges
+    - property tax
+
+  # General Policy Changes
+  general_policy:
+    - policy change
+    - new policy
+    - government policy
+    - regulatory change
+    - law amendment
+    - ordinance
+    - notification
+    - circular
+    - ministry notification
+    - cabinet approval
+    - policy announcement
+
+# Real Estate Market (General - Lower Priority)
+real_estate:
+  general:
+    - real estate
+    - property market
+    - housing market
+    - realty sector
+    - property sector
+
+# Infrastructure (General)
+infrastructure:
+  general:
+    - infrastructure
+    - urban infrastructure
+    - development project
+    - public transport
+    - connectivity
+    - infrastructure project
+
+# EXCLUDED KEYWORDS - News containing these will be filtered out
+excluded:
+  competitor:
+    - MagicBricks competitor
+    - 99acres
+    - Housing.com
+    - PropTiger
+    - Makaan.com
+    - CommonFloor
+    - NoBroker
+    - Zillow India
+
+  market_research:
+    - market research report
+    - residential dynamics
+    - property analysis report
+    - market analysis
+    - research report
+    - quarterly report
+    - market survey
+    - property price analysis
+    - price trend analysis
+    - market trend report
+    - residential report
+    - commercial report
+    - real estate research
+
+  # Soft exclusions - lower weight but not hard filter
+  low_priority:
+    - celebrity gossip
+    - entertainment news
+    - movie release
+    - cricket match
+    - IPL
+
+# Scoring Weights for Keyword Categories
+scoring:
+  priority:
+    metro: 10
+    expressway: 9
+    airport: 9
+  housing_schemes:
+    dda: 8
+    mhada: 8
+    sidco: 7
+    state_authorities: 7
+    pmay: 9
   celebrity:
-    - "celebrity"
-    - "Bollywood"
-    - "cricketer"
-    - "bought"
-    - "purchased"
-    - "investment"
-
-  commercial:
-    - "office space"
-    - "commercial"
-    - "co-working"
-    - "retail"
-    - "warehouse"
-    - "industrial"
-    - "Grade A"
-
-  rental:
-    - "rent"
-    - "rental"
-    - "lease"
-    - "tenant"
-    - "landlord"
-    - "yield"
-
-# =============================================================================
-# LOCATION KEYWORDS
-# =============================================================================
-locations:
-  metros:
-    - "Mumbai"
-    - "Delhi"
-    - "Bangalore"
-    - "Bengaluru"
-    - "Hyderabad"
-    - "Chennai"
-    - "Kolkata"
-    - "Pune"
-
-  tier2:
-    - "Ahmedabad"
-    - "Jaipur"
-    - "Lucknow"
-    - "Chandigarh"
-    - "Kochi"
-    - "Indore"
-    - "Nagpur"
-
-  micro_markets:
-    - "Navi Mumbai"
-    - "Thane"
-    - "Gurgaon"
-    - "Noida"
-    - "Greater Noida"
-    - "Whitefield"
-    - "Electronic City"
-    - "Gachibowli"
-    - "HITEC City"
-
-# =============================================================================
-# COMPANY KEYWORDS
-# =============================================================================
-companies:
-  developers:
-    - "DLF"
-    - "Godrej Properties"
-    - "Oberoi Realty"
-    - "Prestige"
-    - "Brigade"
-    - "Sobha"
-    - "Lodha"
-    - "Mahindra Lifespaces"
-    - "Tata Housing"
-    - "L&T Realty"
-    - "Shapoorji Pallonji"
-    - "Hiranandani"
-    - "Piramal Realty"
-    - "Birla Estates"
-    - "Puravankara"
-    - "Sunteck"
-    - "Phoenix Mills"
-
-  competitors:
-    - "99acres"
-    - "MagicBricks"
-    - "Housing.com"
-    - "NoBroker"
-    - "Square Yards"
-    - "PropTiger"
-    - "CommonFloor"
-    - "Makaan"
-
-# =============================================================================
-# NEGATIVE KEYWORDS (Filter Out)
-# =============================================================================
-exclude_keywords:
-  - "sponsored"
-  - "advertisement"
-  - "paid partnership"
-  - "casino"
-  - "betting"
-  - "lottery"
+    transactions: 7
+  policy:
+    building_laws: 8
+    gst_construction: 8
+    general_policy: 7
+  real_estate:
+    general: 5
+  infrastructure:
+    general: 6
+  excluded:
+    competitor: -10
+    market_research: -10
+    low_priority: -3

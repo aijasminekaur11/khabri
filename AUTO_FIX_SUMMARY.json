@@ -1,12 +1,13 @@
 {
   "success": true,
-  "issue_number": 23,
+  "issue_number": 24,
   "modified_files": [
-    "/home/runner/work/khabri/khabri/.github/workflows/scheduled-digest.yml"
+    "/home/runner/work/khabri/khabri/config/keywords.yaml",
+    "/home/runner/work/khabri/khabri/src/filters/keyword_filter.py"
   ],
   "tests_passed": true,
-  "summary": "Updated scheduled digest times to 7:05 AM IST (1:35 AM UTC) and 4:07 PM IST (10:37 AM UTC) as requested.",
+  "summary": "Created keywords.yaml configuration and KeywordFilter class to filter news based on user preferences: include metro/expressway/airport/housing schemes/celebrity real estate/policy changes, exclude competitor/market research reports.",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~143 lines)",
+  "size_reason": "Too many lines changed (~572 lines)",
   "auto_commit": false
 }
