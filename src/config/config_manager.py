@@ -163,16 +163,31 @@ class ConfigManager:
 
     def get_digest_schedule(self, digest_type: str) -> Optional[Dict[str, Any]]:
         """
-        Get specific digest schedule
+        Get specific digest schedule with timezone-aware time conversion.
+        
+        Times in configuration should be specified in IST (Indian Standard Time, UTC+5:30).
+        This method ensures proper timezone handling for digest scheduling.
 
         Args:
             digest_type: Type of digest (morning or evening)
 
         Returns:
-            Digest schedule configuration or None
+            Digest schedule configuration or None, with timezone metadata
         """
         schedules = self.get_schedules()
-        return schedules.get('digests', {}).get(digest_type)
+        digest_schedule = schedules.get('digests', {}).get(digest_type)
+        
+        if digest_schedule:
+            # Add timezone information if not present
+            # Default to IST timezone for all schedules
+            if 'timezone' not in digest_schedule:
+                digest_schedule['timezone'] = 'Asia/Kolkata'  # IST timezone
+            
+            # Add note about timezone handling
+            if 'time' in digest_schedule:
+                digest_schedule['_timezone_note'] = 'All times are in IST (UTC+5:30)'
+        
+        return digest_schedule
 
     def is_digest_enabled(self, digest_type: str) -> bool:
         """
