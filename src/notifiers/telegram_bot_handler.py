@@ -27,6 +27,17 @@ except ImportError:
     logger.warning("Claude Auto-Fixer not available")
     ClaudeAutoFixer = None
 
+# Import Smart Intent Parser
+try:
+    from src.utils.intent_parser import IntentParser, ParsedIntent, parse_intent
+    SMART_INTENT_AVAILABLE = True
+except ImportError:
+    SMART_INTENT_AVAILABLE = False
+    logger.warning("Smart Intent Parser not available")
+    IntentParser = None
+    ParsedIntent = None
+    parse_intent = None
+
 # Back-off delay (seconds) after polling errors to avoid tight loops
 _ERROR_BACKOFF_SECONDS = 5
 
@@ -505,6 +516,13 @@ Please review manually: {issue_url}
 📝 `/fix <description>` - Create automated fix request
    Example: `/fix Budget alerts showing wrong news`
 
+🧠 **Smart Commands** (Just type naturally):
+   • `add automotive companies like Mahindra, Tata`
+   • `add bollywood actors like Shah Rukh Khan`
+   • `change morning time to 8 AM`
+   • `show all cricketers`
+   • `remove John Deere from automotive`
+
 📊 `/status` - Check status of recent fixes
 
 ❓ `/help` - Show this help message
@@ -512,17 +530,24 @@ Please review manually: {issue_url}
 ---
 
 **How it works:**
-1. You send `/fix` command with description
-2. Bot creates GitHub issue automatically
-3. Claude Code analyzes and fixes the issue
-4. Bot notifies you when PR is ready
-5. You review and merge the fix
+1. **Smart Mode:** Just type what you want naturally
+   → Bot will understand and ask for confirmation
+   
+2. **Detailed Mode:** Use `/fix` for complex changes
+   → Bot creates GitHub issue
+   → Claude Code analyzes and fixes
+   → You review and approve
 
 **Example Usage:**
 ```
-/fix Login page is broken on mobile
+Smart commands (no / needed):
+- add car companies like Mahindra, Tata Motors
+- include real estate developers like Lodha
+- change evening digest to 5 PM
+
+Detailed commands (/fix):
 /fix Budget alerts not filtering correctly
-/fix Telegram notifications not sending
+/fix Add robots.txt compliance to scrapers
 ```
 
 Need help? Contact support or check the GitHub repository.
@@ -530,6 +555,197 @@ Need help? Contact support or check the GitHub repository.
 
         self.send_message(chat_id, help_text)
         return True
+
+    def handle_smart_intent(self, chat_id: str, intent: ParsedIntent) -> bool:
+        """
+        Handle parsed smart intent with confirmation UI
+        
+        Args:
+            chat_id: Chat ID to respond to
+            intent: Parsed intent from user's message
+            
+        Returns:
+            True if handled successfully
+        """
+        logger.info(f"Handling smart intent: {intent.intent_type} with confidence {intent.confidence}")
+        
+        # Build confirmation message
+        emoji_map = {
+            'ADD_COMPANIES': '🏢',
+            'REMOVE_ITEM': '🗑️',
+            'CHANGE_TIME': '⏰',
+            'LIST_ITEMS': '📋',
+            'ADD_SOURCE': '📰',
+            'HELP': '❓',
+        }
+        
+        emoji = emoji_map.get(intent.intent_type, '🤖')
+        
+        # Format entities for display
+        if intent.entities:
+            entity_list = '\n'.join([f"  • {e}" for e in intent.entities[:10]])
+            if len(intent.entities) > 10:
+                entity_list += f"\n  ... and {len(intent.entities) - 10} more"
+        else:
+            entity_list = "  (No specific items detected)"
+        
+        # Build message
+        message = f"""{emoji} **I understood your request:**
+
+**Action:** {intent.suggested_changes}
+
+**Category:** {intent.category.replace('_', ' ').title() if intent.category else 'General'}
+**Target File:** `{intent.target_file}`
+
+**Detected Items:**
+{entity_list}
+
+**Confidence:** {intent.confidence:.0%}
+
+Would you like me to proceed with this change?"""
+
+        # Create inline keyboard for confirmation
+        keyboard = {
+            'inline_keyboard': [
+                [
+                    {'text': '👍 Yes, proceed', 'callback_data': f'confirm:{intent.intent_type}:{hash(intent.original_text) & 0xFFFFFFFF}'},
+                    {'text': '✏️ Edit', 'callback_data': f'edit:{intent.intent_type}:{hash(intent.original_text) & 0xFFFFFFFF}'},
+                ],
+                [
+                    {'text': '❌ Cancel', 'callback_data': 'cancel'},
+                    {'text': '🔄 Use /fix instead', 'callback_data': f'fallback:{intent.original_text[:50]}'},
+                ]
+            ]
+        }
+        
+        # Store intent in memory for callback handling (simple approach)
+        # In production, use Redis or database
+        if not hasattr(self, '_pending_intents'):
+            self._pending_intents = {}
+        
+        intent_key = f"{chat_id}:{hash(intent.original_text) & 0xFFFFFFFF}"
+        self._pending_intents[intent_key] = intent
+        
+        # Send message with inline keyboard
+        self._send_message_with_keyboard(chat_id, message, keyboard)
+        return True
+
+    def _send_message_with_keyboard(self, chat_id: str, text: str, keyboard: Dict) -> bool:
+        """Send message with inline keyboard"""
+        if not self.bot_token:
+            return False
+        
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        
+        payload = {
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': 'Markdown',
+            'reply_markup': json.dumps(keyboard)
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            return response.status_code == 200
+        except requests.RequestException as e:
+            logger.error(f"Error sending message with keyboard: {e}")
+            return False
+
+    def handle_callback_query(self, callback_query: Dict[str, Any]) -> bool:
+        """
+        Handle inline button callbacks
+        
+        Args:
+            callback_query: Callback query from Telegram
+            
+        Returns:
+            True if handled successfully
+        """
+        callback_id = callback_query.get('id', '')
+        chat_id = str(callback_query.get('message', {}).get('chat', {}).get('id', ''))
+        data = callback_query.get('data', '')
+        
+        # Acknowledge callback
+        self._answer_callback(callback_id)
+        
+        if data == 'cancel':
+            self.send_message(chat_id, "❌ Cancelled. No changes made.")
+            return True
+        
+        if data.startswith('confirm:'):
+            parts = data.split(':', 2)
+            if len(parts) >= 2:
+                intent_type = parts[1]
+                intent_hash = parts[2] if len(parts) > 2 else ''
+                return self._execute_confirmed_intent(chat_id, intent_type, intent_hash)
+        
+        if data.startswith('fallback:'):
+            original_text = data.split(':', 1)[1] if ':' in data else ''
+            return self.handle_fix_command(chat_id, f"/fix {original_text}")
+        
+        if data.startswith('edit:'):
+            self.send_message(
+                chat_id,
+                "✏️ Please send the corrected command:\n"
+                "Example: `add automotive companies like Mahindra, Tata Motors`",
+                parse_mode='Markdown'
+            )
+            return True
+        
+        return False
+
+    def _execute_confirmed_intent(self, chat_id: str, intent_type: str, intent_hash: str) -> bool:
+        """Execute a confirmed intent by creating a detailed GitHub issue"""
+        intent_key = f"{chat_id}:{intent_hash}"
+        
+        if not hasattr(self, '_pending_intents') or intent_key not in self._pending_intents:
+            self.send_message(chat_id, "❌ Error: Intent expired. Please try again.")
+            return False
+        
+        intent = self._pending_intents[intent_key]
+        
+        # Create detailed description for GitHub issue
+        entities_str = ', '.join([f'"{e}"' for e in intent.entities]) if intent.entities else 'N/A'
+        
+        detailed_description = f"""## Smart Intent Request
+
+**Original Request:** {intent.original_text}
+
+**Detected Intent:** {intent.intent_type}
+**Category:** {intent.category or 'Not specified'}
+**Target File:** {intent.target_file or 'Auto-detect'}
+
+**Extracted Entities:**
+{entities_str}
+
+**Confidence Score:** {intent.confidence:.0%}
+
+### Implementation Notes:
+- Intent Type: {intent.intent_type}
+- Suggested Action: {intent.suggested_changes}
+- This request was parsed using Smart Intent Parser
+
+Please implement the required changes to fulfill this request."""
+
+        # Create GitHub issue with detailed info
+        self.send_message(chat_id, "🔄 Creating detailed fix request...")
+        
+        # Use handle_fix_command but with enhanced description
+        return self.handle_fix_command(chat_id, f"/fix {detailed_description}")
+
+    def _answer_callback(self, callback_id: str) -> bool:
+        """Answer callback query to remove loading state"""
+        if not self.bot_token:
+            return False
+        
+        url = f"https://api.telegram.org/bot{self.bot_token}/answerCallbackQuery"
+        
+        try:
+            response = requests.post(url, json={'callback_query_id': callback_id}, timeout=10)
+            return response.status_code == 200
+        except requests.RequestException as e:
+            logger.error(f"Error answering callback: {e}")
+            return False
 
     def process_message(self, message: Dict[str, Any]) -> bool:
         """
@@ -567,11 +783,27 @@ Need help? Contact support or check the GitHub repository.
         elif text.startswith('/help') or text.startswith('/start'):
             return self.handle_help_command(chat_id)
         else:
-            # Unknown command
+            # Try Smart Intent Parsing for non-command messages
+            if SMART_INTENT_AVAILABLE and parse_intent and len(text) > 5:
+                try:
+                    intent = parse_intent(text)
+                    if intent and intent.confidence >= 0.6:
+                        logger.info(f"Smart intent detected: {intent.intent_type} with {intent.confidence:.0%} confidence")
+                        return self.handle_smart_intent(chat_id, intent)
+                except Exception as e:
+                    logger.error(f"Error parsing smart intent: {e}")
+            
+            # Unknown command or no intent matched
             self.send_message(
                 chat_id,
-                "❓ Unknown command.\n\n"
-                "Use `/help` to see available commands."
+                "❓ I didn't understand that.\n\n"
+                "You can:\n"
+                "• Use `/fix <description>` for detailed fixes\n"
+                "• Try natural language like:\n"
+                "  - `add automotive companies like Mahindra`\n"
+                "  - `change morning time to 8 AM`\n"
+                "  - `show all bollywood celebrities`\n\n"
+                "Or use `/help` for more options."
             )
             return False
 
@@ -598,6 +830,9 @@ Need help? Contact support or check the GitHub repository.
 
                     if 'message' in update:
                         self.process_message(update['message'])
+                    elif 'callback_query' in update:
+                        # Handle inline button clicks
+                        self.handle_callback_query(update['callback_query'])
 
             except KeyboardInterrupt:
                 logger.info("Bot stopped by user")
