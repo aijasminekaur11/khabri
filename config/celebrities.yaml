@@ -1,417 +1,104 @@
-# Celebrities Configuration
-# Khabri - News Intelligence System
+# Celebrity and Notable Person Tracking Configuration
+# Used for matching news articles with relevant public figures and companies
+# Format: Each category contains a list of people/companies to track
 
-# =============================================================================
-# BOLLYWOOD CELEBRITIES
-# =============================================================================
+# Bollywood celebrities
 bollywood:
-  a_list:
-    - "Shah Rukh Khan"
-    - "Amitabh Bachchan"
-    - "Salman Khan"
-    - "Aamir Khan"
-    - "Akshay Kumar"
-    - "Hrithik Roshan"
-    - "Ranveer Singh"
-    - "Ranbir Kapoor"
-    - "Deepika Padukone"
-    - "Priyanka Chopra"
-    - "Alia Bhatt"
-    - "Kareena Kapoor"
-    - "Katrina Kaif"
-    - "Anushka Sharma"
-    - "Ajay Devgn"
-    - "Saif Ali Khan"
-    - "John Abraham"
-    - "Varun Dhawan"
-    - "Sidharth Malhotra"
-    - "Tiger Shroff"
-    - "Vicky Kaushal"
-    - "Ayushmann Khurrana"
-    - "Kartik Aaryan"
-    - "Shahid Kapoor"
-    - "Abhishek Bachchan"
-    - "Kajol"
-    - "Madhuri Dixit"
-    - "Juhi Chawla"
-    - "Rani Mukerji"
-    - "Preity Zinta"
-    - "Lara Dutta"
-    - "Bipasha Basu"
-    - "Sonam Kapoor"
-    - "Sonakshi Sinha"
-    - "Shraddha Kapoor"
-    - "Janhvi Kapoor"
-    - "Sara Ali Khan"
-    - "Ananya Panday"
-    - "Kiara Advani"
-    - "Kriti Sanon"
-    - "Disha Patani"
-    - "Jacqueline Fernandez"
-    - "Nora Fatehi"
-    - "Malaika Arora"
-    - "Shilpa Shetty"
-    - "Twinkle Khanna"
-    - "Suniel Shetty"
-    - "Bobby Deol"
-    - "Sunny Deol"
-    - "Dharmendra"
-    - "Jeetendra"
-    - "Rakesh Roshan"
-    - "Jackie Shroff"
-    - "Anil Kapoor"
-    - "Sanjay Dutt"
-    - "Govinda"
-    - "Paresh Rawal"
-    - "Rajpal Yadav"
-    - "Johnny Lever"
-    - "Chunky Pandey"
-    - "Shakti Kapoor"
-    - "Gulshan Grover"
-    - "Amrish Puri"
-    - "Danny Denzongpa"
-    - "Kader Khan"
-    - "Om Puri"
-    - "Naseeruddin Shah"
-    - "Irrfan Khan"
-    - "Anupam Kher"
-    - "Pankaj Tripathi"
-    - "Rajkummar Rao"
-    - "Ayushmann Khurrana"
-    - "Vicky Kaushal"
-    - "Kartik Aaryan"
-    - "Sidharth Malhotra"
-    - "Tiger Shroff"
-    - "Varun Dhawan"
-    - "Arjun Kapoor"
-    - "Aditya Roy Kapur"
-    - "Sushant Singh Rajput"
-    - "Rajesh Sharma"
-    - "Deepak Dobriyal"
-    - "Jaideep Ahlawat"
-    - "Vijay Varma"
-    - "Ali Fazal"
-    - "Jim Sarbh"
-    - "Siddhant Chaturvedi"
-    - "Ishaan Khatter"
-    - "Ahan Shetty"
-    - "Aayush Sharma"
-    - "Sooraj Pancholi"
-    - "Harshvardhan Kapoor"
-    - "Armaan Jain"
-    - "Karan Deol"
-    - "Abhimanyu Dassani"
-    - "Vardhan Puri"
-    - "Meezaan Jafri"
-    - "Aadar Jain"
-    - "Pashmina Roshan"
-    - "Suhana Khan"
-    - "Khushi Kapoor"
-    - "Navya Naveli Nanda"
-    - "Agastya Nanda"
-    - "Ibrahim Ali Khan"
-    - "Junaid Khan"
-    - "Aarav Kumar"
-    - "Hrehaan Roshan"
-    - "Shanaya Kapoor"
+  - name: "Shah Rukh Khan"
+    aliases: ["SRK", "King Khan"]
+    priority: high
+  - name: "Salman Khan"
+    aliases: ["Bhaijaan"]
+    priority: high
+  - name: "Aamir Khan"
+    aliases: ["Mr. Perfectionist"]
+    priority: high
+  - name: "Akshay Kumar"
+    aliases: ["Khiladi"]
+    priority: medium
+  - name: "Amitabh Bachchan"
+    aliases: ["Big B", "Amit Ji"]
+    priority: high
 
-  producers_directors:
-    - "Karan Johar"
-    - "Aditya Chopra"
-    - "Sanjay Leela Bhansali"
-    - "Rohit Shetty"
-    - "Rajkumar Hirani"
-    - "Farhan Akhtar"
-
-  families:
-    - "Bachchan"
-    - "Kapoor"
-    - "Khan"
-    - "Ambani"
-    - "Birla"
-
-# =============================================================================
-# CRICKET CELEBRITIES
-# =============================================================================
+# Cricket personalities
 cricket:
-  current_players:
-    - "Virat Kohli"
-    - "Rohit Sharma"
-    - "MS Dhoni"
-    - "Hardik Pandya"
-    - "KL Rahul"
-    - "Rishabh Pant"
-    - "Jasprit Bumrah"
-    - "Ravindra Jadeja"
-    - "Shubman Gill"
-    - "Suryakumar Yadav"
-    - "Mohammed Siraj"
-    - "Kuldeep Yadav"
-    - "Axar Patel"
-    - "Ishan Kishan"
-    - "Sanju Samson"
-    - "Arshdeep Singh"
-    - "Yuzvendra Chahal"
-    - "Ruturaj Gaikwad"
-    - "Shreyas Iyer"
-    - "Mohammed Shami"
-    - "Washington Sundar"
-    - "Shardul Thakur"
-    - "Deepak Chahar"
-    - "Bhuvneshwar Kumar"
-    - "Umesh Yadav"
-    - "Navdeep Saini"
-    - "T Natarajan"
-    - "Chetan Sakariya"
-    - "Prasidh Krishna"
-    - "Avesh Khan"
-    - "Harshal Patel"
-    - "Varun Chakravarthy"
-    - "Rahul Chahar"
-    - "Krishnappa Gowtham"
-    - "Venkatesh Iyer"
-    - "Devdutt Padikkal"
-    - "Prithvi Shaw"
-    - "Shubman Gill"
-    - "Mayank Agarwal"
-    - "Hanuma Vihari"
+  - name: "Virat Kohli"
+    aliases: ["VK", "Chikoo"]
+    priority: high
+  - name: "MS Dhoni"
+    aliases: ["MSD", "Captain Cool"]
+    priority: high
+  - name: "Rohit Sharma"
+    aliases: ["Hitman"]
+    priority: high
+  - name: "Sachin Tendulkar"
+    aliases: ["Master Blaster", "God of Cricket"]
+    priority: high
 
-  legends:
-    - "Sachin Tendulkar"
-    - "Sourav Ganguly"
-    - "Rahul Dravid"
-    - "Kapil Dev"
-    - "Sunil Gavaskar"
-    - "Virender Sehwag"
-    - "Anil Kumble"
-    - "Harbhajan Singh"
-    - "Yuvraj Singh"
-    - "MS Dhoni"
-    - "Zaheer Khan"
-    - "J Srinath"
-    - "VVS Laxman"
-
-# =============================================================================
-# BUSINESS TYCOONS
-# =============================================================================
+# Business leaders
 business:
-  industrialists:
-    - "Mukesh Ambani"
-    - "Gautam Adani"
-    - "Ratan Tata"
-    - "Kumar Mangalam Birla"
-    - "Lakshmi Mittal"
-    - "Azim Premji"
-    - "Cyrus Poonawalla"
-    - "Uday Kotak"
-    - "Radhakishan Damani"
-    - "Dilip Shanghvi"
-    - "Sunil Mittal"
-    - "Savitri Jindal"
-    - "Gopal Kishan Hinduja"
-    - "Harsh Mariwala"
-    - "Kalanithi Maran"
-    - "Pallonji Mistry"
-    - "Anand Mahindra"
-    - "Rahul Bajaj"
-    - "Benu Gopal Bangur"
-    - "Karsanbhai Patel"
-    - "Vikram Lal"
-    - "Baba Kalyani"
-    - "Kushal Pal Singh"
-    - "Micky Jagtiani"
-    - "Rajiv Singh"
-    - "Ravi Jaipuria"
-    - "Sudhir Mehta"
-    - "Samir Mehta"
-    - "Mangal Prabhat Lodha"
-    - "Niranjan Hiranandani"
-    - "Vikas Oberoi"
-    - "Pirojsha Godrej"
-    - "Jamshyd Godrej"
-    - "Burjis Godrej"
-    - "Smita Crishna Godrej"
-    - "Adi Godrej"
-    - "Nadir Godrej"
-    - "Vijay Chauhan"
-    - "Chandru Raheja"
-    - "Jitendra Virwani"
-    - "Atul Ruia"
-    - "Ramesh Jogani"
-    - "Sandeep Engineer"
-    - "Abhay Soi"
-    - "Dilip Surana"
-    - "Murali Divi"
-    - "Sridhar Vembu"
-    - "Romesh Wadhwani"
-    - "Nandan Nilekani"
-    - "Sunny Varkey"
-    - "Yusuffali MA"
+  - name: "Mukesh Ambani"
+    aliases: ["Reliance Chairman"]
+    priority: high
+  - name: "Gautam Adani"
+    aliases: ["Adani Group Chairman"]
+    priority: high
+  - name: "Ratan Tata"
+    aliases: ["Tata Sons Chairman Emeritus"]
+    priority: high
+  - name: "Azim Premji"
+    aliases: ["Wipro Chairman"]
+    priority: medium
+  - name: "Narayana Murthy"
+    aliases: ["Infosys Founder"]
+    priority: medium
 
-  real_estate:
-    - "Kushal Pal Singh"
-    - "Mangal Prabhat Lodha"
-    - "Niranjan Hiranandani"
-    - "Pirojsha Godrej"
-    - "Vikas Oberoi"
-    - "Rajiv Singh"
-    - "Irfan Razack"
-    - "Jitendra Khimji Virwani"
-    - "Basant Bansal"
-    - "Sandeep Engineer"
-    - "Ramesh Jogani"
-    - "Rohan Reddy"
-    - "Aditya Bhat"
-    - "Ashish Puravankara"
-    - "Noel Tata"
-    - "Abhishek Lodha"
-    - "Abhinandan Lodha"
-    - "Rohan Lodha"
-    - "Abhisheck Hiranandani"
-    - "Darshan Hiranandani"
-    - "Navin Makhija"
-    - "Rustomjee"
-    - "Tejas Vyas"
-    - "Mayank Ruia"
-    - "Sagar Chordia"
-    - "Atul Chordia"
-    - "Ravindra Kumar"
-    - "Dhiraj Jain"
-    - "Pradeep Jain"
-    - "Ankit Jain"
+# Automotive companies and leaders
+automotive:
+  - name: "Mahindra"
+    aliases: ["Mahindra & Mahindra", "M&M", "Mahindra Group"]
+    priority: high
+    description: "Indian multinational automotive manufacturing corporation"
+    keywords: ["automotive", "infrastructure", "vehicles", "tractor", "SUV"]
+  - name: "Tata Motors"
+    aliases: ["Tata", "Tata Group", "TML"]
+    priority: high
+    description: "Indian multinational automotive company, part of Tata Group"
+    keywords: ["automotive", "infrastructure", "vehicles", "commercial vehicles", "passenger cars"]
+  - name: "Ashok Leyland"
+    aliases: ["AL", "Ashok Leyland Ltd"]
+    priority: high
+    description: "Indian automobile manufacturer, primarily commercial vehicles"
+    keywords: ["automotive", "infrastructure", "commercial vehicles", "buses", "trucks"]
+  - name: "Anand Mahindra"
+    aliases: ["Mahindra Chairman"]
+    priority: high
+    description: "Chairman of Mahindra Group"
+    keywords: ["business leader", "automotive", "infrastructure"]
+  - name: "Maruti Suzuki"
+    aliases: ["Maruti", "MSI"]
+    priority: medium
+    description: "Indian automobile manufacturer"
+    keywords: ["automotive", "passenger cars"]
+  - name: "Hyundai Motor India"
+    aliases: ["Hyundai India", "HMIL"]
+    priority: medium
+    description: "Indian subsidiary of Hyundai Motor Company"
+    keywords: ["automotive", "passenger cars"]
+  - name: "Eicher Motors"
+    aliases: ["Royal Enfield", "VECV"]
+    priority: medium
+    description: "Indian automotive company, owner of Royal Enfield"
+    keywords: ["automotive", "motorcycles", "commercial vehicles"]
 
-  tech:
-    - "Shiv Nadar"
-    - "Nandan Nilekani"
-    - "Narayana Murthy"
-    - "Bhavish Aggarwal"
-    - "Vijay Shekhar Sharma"
-    - "Sachin Bansal"
-    - "Binny Bansal"
-    - "Kunal Bahl"
-    - "Ritesh Agarwal"
-    - "Byju Raveendran"
-    - "Deepinder Goyal"
-    - "Ashish Hemrajani"
-    - "Girish Mathrubootham"
-    - "Zerodha Nikhil Kamath"
-    - "Nithin Kamath"
-
-# =============================================================================
-# POLITICIANS (Real Estate Context)
-# =============================================================================
-politicians:
-  - "Narendra Modi"
-  - "Yogi Adityanath"
-  - "Devendra Fadnavis"
-  - "Eknath Shinde"
-  - "Piyush Goyal"
-  - "Hardeep Singh Puri"
-  - "Amit Shah"
-  - "Rahul Gandhi"
-  - "Arvind Kejriwal"
-  - "Mamata Banerjee"
-  - "MK Stalin"
-  - "Naveen Patnaik"
-  - "K Chandrashekar Rao"
-  - "Jagan Mohan Reddy"
-  - "Hemant Soren"
-  - "Bhupendra Patel"
-  - "Shivraj Singh Chouhan"
-  - "Manohar Lal Khattar"
-  - "Pushkar Singh Dhami"
-  - "Himanta Biswa Sarma"
-  - "Nitin Gadkari"
-  - "Smriti Irani"
-  - "Nirmala Sitharaman"
-  - "Rajnath Singh"
-  - "Jagat Prakash Nadda"
-  - "Mallikarjun Kharge"
-  - "Priyanka Gandhi Vadra"
-  - "Sonia Gandhi"
-  - "Sharad Pawar"
-  - "Uddhav Thackeray"
-  - "Akhilesh Yadav"
-  - "Mayawati"
-  - "Tejashwi Yadav"
-  - "Lalu Prasad Yadav"
-  - "Nitish Kumar"
-
-# =============================================================================
-# REGIONAL CELEBRITIES
-# =============================================================================
-regional:
-  south:
-    - "Rajinikanth"
-    - "Kamal Haasan"
-    - "Vijay"
-    - "Mahesh Babu"
-    - "Prabhas"
-    - "Allu Arjun"
-    - "Ram Charan"
-    - "Jr NTR"
-    - "Yash"
-    - "Kichha Sudeep"
-    - "Suriya"
-    - "Karthi"
-    - "Dhanush"
-    - "Sivakarthikeyan"
-    - "Vijay Deverakonda"
-    - "Nani"
-    - "Naga Chaitanya"
-    - "Rana Daggubati"
-    - "Dulquer Salmaan"
-    - "Fahadh Faasil"
-    - "Nayanthara"
-    - "Samantha Ruth Prabhu"
-    - "Kajal Aggarwal"
-    - "Tamannaah Bhatia"
-    - "Rashmika Mandanna"
-    - "Pooja Hegde"
-    - "Keerthy Suresh"
-    - "Anushka Shetty"
-    - "Trisha Krishnan"
-    - "Shruti Haasan"
-
-  punjabi:
-    - "Diljit Dosanjh"
-    - "Gippy Grewal"
-    - "Honey Singh"
-    - "Badshah"
-    - "Neeru Bajwa"
-    - "Sargun Mehta"
-
-  bhojpuri:
-    - "Manoj Tiwari"
-    - "Ravi Kishan"
-    - "Pawan Singh"
-    - "Nirahua"
-
-  sports_other:
-    - "PV Sindhu"
-    - "Saina Nehwal"
-    - "Neeraj Chopra"
-    - "Mary Kom"
-    - "Sania Mirza"
-    - "Leander Paes"
-    - "Mahesh Bhupathi"
-    - "Rohit Sharma"
-    - "Sakshi Malik"
-    - "Vinesh Phogat"
-    - "Bajrang Punia"
-    - "Abhinav Bindra"
-    - "Gagan Narang"
-    - "Shubman Gill"
-    - "Harmanpreet Singh"
-
-  youtubers_influencers:
-    - "Bhuvan Bam"
-    - "Amit Bhadana"
-    - "Carry Minati"
-    - "Ashish Chanchlani"
-    - "Technical Guruji"
-    - "Mumbiker Nikhil"
-    - "Flying Beast"
-    - "BeerBiceps"
-    - "Raj Shamani"
-    - "Ankur Warikoo"
+# Politicians
+politics:
+  - name: "Narendra Modi"
+    aliases: ["PM Modi", "Prime Minister"]
+    priority: high
+  - name: "Amit Shah"
+    aliases: ["Home Minister"]
+    priority: high
+  - name: "Nirmala Sitharaman"
+    aliases: ["Finance Minister"]
+    priority: high

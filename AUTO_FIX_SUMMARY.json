@@ -1,12 +1,12 @@
 {
   "success": true,
-  "issue_number": 27,
+  "issue_number": 28,
   "modified_files": [
-    "/home/runner/work/khabri/khabri/config/keywords.yaml"
+    "/home/runner/work/khabri/khabri/config/celebrities.yaml"
   ],
   "tests_passed": true,
-  "summary": "Added automotive industry companies (Mahindra, Tata, Sonalika, TAFE, John Deere, Ashok Leyland) and infrastructure/real-estate land acquisition keywords to the keywords configuration.",
+  "summary": "Added automotive companies (Mahindra, Tata Motors, Ashok Leyland) and related entities to celebrities.yaml configuration file under new 'automotive' category for infrastructure-related news tracking.",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~243 lines)",
+  "size_reason": "Too many lines changed (~105 lines)",
   "auto_commit": false
 }
