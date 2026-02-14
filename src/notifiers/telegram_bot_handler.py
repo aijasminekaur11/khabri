@@ -873,7 +873,7 @@ Would you like me to proceed with this change?"""
             if SMART_INTENT_AVAILABLE and parse_intent and len(text) > 5:
                 try:
                     intent = parse_intent(text)
-                    if intent and intent.confidence >= 0.6:
+                    if intent and intent.confidence >= 0.5:  # Lowered from 0.6 to catch more patterns
                         logger.info(f"Smart intent detected: {intent.intent_type} with {intent.confidence:.0%} confidence")
                         return self.handle_smart_intent(chat_id, intent)
                 except Exception as e:
