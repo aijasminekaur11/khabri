@@ -525,6 +525,8 @@ Please review manually: {issue_url}
 
 📊 `/status` - Check status of recent fixes
 
+↩️ `/undo` - Undo your last change
+
 ❓ `/help` - Show this help message
 
 ---
@@ -555,6 +557,77 @@ Need help? Contact support or check the GitHub repository.
 
         self.send_message(chat_id, help_text)
         return True
+
+    def handle_undo_command(self, chat_id: str) -> bool:
+        """
+        Handle /undo command - restore from last backup
+
+        Args:
+            chat_id: Chat ID that sent the command
+
+        Returns:
+            True if handled successfully
+        """
+        try:
+            # Import ConfigExecutor
+            try:
+                from utils.config_executor import ConfigExecutor
+            except ImportError:
+                from src.utils.config_executor import ConfigExecutor
+
+            executor = ConfigExecutor()
+
+            # Read audit log to find user's last change
+            if not executor.audit_log_file.exists():
+                self.send_message(
+                    chat_id,
+                    "⚠️ No changes found to undo.\n\n"
+                    "The undo feature tracks your configuration changes.\n"
+                    "Make some changes first, then you can undo them."
+                )
+                return True
+
+            audit_data = executor._read_yaml(executor.audit_log_file)
+
+            if 'changes' not in audit_data or not audit_data['changes']:
+                self.send_message(
+                    chat_id,
+                    "⚠️ No changes found to undo."
+                )
+                return True
+
+            # Find last successful change by this user
+            last_change = None
+            for change in audit_data['changes']:
+                if change.get('user_id') == chat_id and change.get('success') and change.get('backup_file'):
+                    last_change = change
+                    break
+
+            if not last_change:
+                self.send_message(
+                    chat_id,
+                    "⚠️ No recent changes found for your account.\n\n"
+                    "Only your own changes can be undone."
+                )
+                return True
+
+            # Perform rollback
+            backup_file = last_change['backup_file']
+            result = executor.rollback(backup_file)
+
+            # Send result
+            self.send_message(chat_id, result.message, parse_mode='Markdown')
+
+            return result.success
+
+        except Exception as e:
+            logger.error(f"Error handling undo command: {e}", exc_info=True)
+            self.send_message(
+                chat_id,
+                f"❌ Error undoing last change: {str(e)}\n\n"
+                "Please try again or contact support."
+            )
+            return False
 
     def handle_smart_intent(self, chat_id: str, intent: ParsedIntent) -> bool:
         """
@@ -695,43 +768,49 @@ Would you like me to proceed with this change?"""
         return False
 
     def _execute_confirmed_intent(self, chat_id: str, intent_type: str, intent_hash: str) -> bool:
-        """Execute a confirmed intent by creating a detailed GitHub issue"""
+        """Execute a confirmed intent using ConfigExecutor"""
         intent_key = f"{chat_id}:{intent_hash}"
-        
+
         if not hasattr(self, '_pending_intents') or intent_key not in self._pending_intents:
             self.send_message(chat_id, "❌ Error: Intent expired. Please try again.")
             return False
-        
+
         intent = self._pending_intents[intent_key]
-        
-        # Create detailed description for GitHub issue
-        entities_str = ', '.join([f'"{e}"' for e in intent.entities]) if intent.entities else 'N/A'
-        
-        detailed_description = f"""## Smart Intent Request
 
-**Original Request:** {intent.original_text}
+        # Import ConfigExecutor
+        try:
+            from utils.config_executor import ConfigExecutor
+        except ImportError:
+            try:
+                from src.utils.config_executor import ConfigExecutor
+            except ImportError:
+                self.send_message(chat_id, "❌ ConfigExecutor not available. Please check installation.")
+                return False
 
-**Detected Intent:** {intent.intent_type}
-**Category:** {intent.category or 'Not specified'}
-**Target File:** {intent.target_file or 'Auto-detect'}
+        # Execute the intent
+        self.send_message(chat_id, "🔄 Executing your request...")
 
-**Extracted Entities:**
-{entities_str}
+        try:
+            executor = ConfigExecutor()
+            result = executor.execute(intent, user_id=chat_id)
 
-**Confidence Score:** {intent.confidence:.0%}
+            # Send result message
+            self.send_message(chat_id, result.message, parse_mode='Markdown')
 
-### Implementation Notes:
-- Intent Type: {intent.intent_type}
-- Suggested Action: {intent.suggested_changes}
-- This request was parsed using Smart Intent Parser
+            # Clean up pending intent
+            if intent_key in self._pending_intents:
+                del self._pending_intents[intent_key]
 
-Please implement the required changes to fulfill this request."""
+            return result.success
 
-        # Create GitHub issue with detailed info
-        self.send_message(chat_id, "🔄 Creating detailed fix request...")
-        
-        # Use handle_fix_command but with enhanced description
-        return self.handle_fix_command(chat_id, f"/fix {detailed_description}")
+        except Exception as e:
+            logger.error(f"Error executing intent: {e}", exc_info=True)
+            self.send_message(
+                chat_id,
+                f"❌ Error executing request: {str(e)}\n\n"
+                "Please try again or contact support."
+            )
+            return False
 
     def _answer_callback(self, callback_id: str) -> bool:
         """Answer callback query to remove loading state"""
@@ -780,9 +859,16 @@ Please implement the required changes to fulfill this request."""
             return self.handle_fix_command(chat_id, text)
         elif text.startswith('/status'):
             return self.handle_status_command(chat_id)
+        elif text.startswith('/undo'):
+            return self.handle_undo_command(chat_id)
         elif text.startswith('/help') or text.startswith('/start'):
             return self.handle_help_command(chat_id)
         else:
+            # Check for natural language undo
+            if any(phrase in text.lower() for phrase in ['undo', 'rollback', 'revert', 'restore']):
+                if any(phrase in text.lower() for phrase in ['last', 'previous', 'recent']):
+                    return self.handle_undo_command(chat_id)
+
             # Try Smart Intent Parsing for non-command messages
             if SMART_INTENT_AVAILABLE and parse_intent and len(text) > 5:
                 try:
