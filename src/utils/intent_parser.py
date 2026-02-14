@@ -30,43 +30,123 @@ class IntentParser:
     """
     
     # Intent patterns - maps regex patterns to intent types
+    # EXPANDED: Many variations for natural language flexibility
     INTENT_PATTERNS = [
-        # ADD patterns
-        (r'add\s+(?:(?:some|few|more|new)\s+)?(.+?)\s+(?:companies?|celebrities?|people|names?)', 'ADD_COMPANIES'),
-        (r'include\s+(.+?)\s+(?:companies?|celebrities?|names?)', 'ADD_COMPANIES'),
-        (r'put\s+(.+?)\s+(?:in|to)\s+(?:the\s+)?list', 'ADD_COMPANIES'),
+        # ==========================================
+        # ADD patterns (EXPANDED)
+        # ==========================================
+        # Basic add patterns
+        (r'add\s+(?:(?:some|few|more|new|other)\s+)?(.+?)\s+(?:companies?|celebrities?|people|names?|actors?|players?)', 'ADD_COMPANIES'),
+        (r'include\s+(.+?)\s+(?:companies?|celebrities?|names?|actors?|players?)', 'ADD_COMPANIES'),
+        (r'put\s+(.+?)\s+(?:in|to|on)\s+(?:the\s+)?(?:list|tracking)', 'ADD_COMPANIES'),
         
-        # REMOVE patterns
-        (r'remove\s+(?:the\s+)?(.+)', 'REMOVE_ITEM'),
-        (r'delete\s+(?:the\s+)?(.+)', 'REMOVE_ITEM'),
-        (r'take\s+out\s+(?:the\s+)?(.+)', 'REMOVE_ITEM'),
+        # "I want to..." patterns
+        (r'(?:i\s+)?(?:want|would like|need)\s+to\s+(?:add|include|track)\s+(.+)', 'ADD_COMPANIES'),
+        (r'(?:i\s+)?(?:want|would like|need)\s+(.+?)\s+(?:added|included|tracked)', 'ADD_COMPANIES'),
         
-        # TIME/Schedule patterns
+        # "Can you..." patterns
+        (r'(?:can|could)\s+you\s+(?:add|include|put)\s+(.+)', 'ADD_COMPANIES'),
+        (r'(?:please\s+)?(?:add|include)\s+(.+)', 'ADD_COMPANIES'),
+        
+        # "Track/Follow" patterns
+        (r'(?:start\s+)?(?:track|follow|monitor)(?:ing)?\s+(.+)', 'ADD_COMPANIES'),
+        
+        # "Track X for news" patterns
+        (r'track\s+(.+?)\s+(?:for|in)\s+(?:news|alerts|updates)', 'ADD_COMPANIES'),
+        
+        # Category-specific patterns
+        (r'add\s+(?:to\s+)?(?:the\s+)?(.+?)\s+(?:list|section|category)', 'ADD_COMPANIES'),
+        
+        # ==========================================
+        # REMOVE patterns (EXPANDED)
+        # ==========================================
+        (r'(?:remove|delete|drop)\s+(?:the\s+)?(.+?)(?:\s+from\s+(?:the\s+)?list)?', 'REMOVE_ITEM'),
+        (r'take\s+(?:out|off)\s+(?:the\s+)?(.+?)(?:\s+from)?', 'REMOVE_ITEM'),
+        (r'(?:i\s+)?(?:want|would like)\s+to\s+(?:remove|delete)\s+(.+)', 'REMOVE_ITEM'),
+        (r'stop\s+(?:track|follow|monitor)(?:ing)?\s+(.+)', 'REMOVE_ITEM'),
+        (r'remove\s+(.+?)\s+from\s+(?:the\s+)?(?:list|tracking)', 'REMOVE_ITEM'),
+        
+        # ==========================================
+        # TIME/Schedule patterns (EXPANDED)
+        # ==========================================
         (r'change\s+(?:the\s+)?time', 'CHANGE_TIME'),
         (r'set\s+(?:the\s+)?schedule', 'CHANGE_TIME'),
-        (r'update\s+(?:the\s+)?(?:morning|evening)?\s*time', 'CHANGE_TIME'),
-        (r'move\s+(?:the\s+)?(?:morning|evening)?\s*(?:news|digest)?\s*to', 'CHANGE_TIME'),
+        (r'update\s+(?:the\s+)?(?:morning|evening|digest|news)?\s*time', 'CHANGE_TIME'),
+        (r'move\s+(?:the\s+)?(?:morning|evening)?\s*(?:news|digest)?\s*(?:time\s+)?to', 'CHANGE_TIME'),
+        (r'(?:make|set)\s+(?:the\s+)?(?:morning|evening)?\s*(?:news|digest)?\s*(?:at\s+)?(\d+)', 'CHANGE_TIME'),
+        (r'(?:morning|evening)\s+(?:news|digest)\s+(?:at|time)\s+(\d+)', 'CHANGE_TIME'),
+        (r'(?:change|update)\s+(?:the\s+)?schedule\s+to', 'CHANGE_TIME'),
         
-        # LIST/Show patterns
-        (r'(?:show|list|view)\s+(?:all\s+)?(.+?)\s+(?:companies?|celebrities?|names?)', 'LIST_ITEMS'),
-        (r'what\s+(?:companies?|celebrities?|names?)\s+(?:do we|are we)\s+(?:have|tracking)', 'LIST_ITEMS'),
+        # ==========================================
+        # LIST/Show patterns (EXPANDED)
+        # ==========================================
+        (r'(?:show|list|view|see|display|get)\s+(?:all\s+)?(?:the\s+)?(.+?)\s+(?:companies?|celebrities?|names?|actors?|players?|items?)', 'LIST_ITEMS'),
+        (r'what\s+(?:companies?|celebrities?|names?|actors?|players?)\s+(?:do we|are we)\s+(?:have|tracking|monitoring|following)', 'LIST_ITEMS'),
+        (r'(?:show|list|view)\s+(?:all\s+)?(?:the\s+)?tracked\s+(.+)', 'LIST_ITEMS'),
+        (r'(?:show|list)\s+(?:the\s+)?(.+?)\s+(?:category|section|list)', 'LIST_ITEMS'),
+        (r'what\s+(?:is|are)\s+(?:in\s+)?(?:the\s+)?(.+?)\s+(?:list|category)', 'LIST_ITEMS'),
+        (r'(?:show|list)\s+everything', 'LIST_ITEMS'),
         
-        # SOURCE patterns
+        # ==========================================
+        # SOURCE patterns (EXPANDED)
+        # ==========================================
         (r'add\s+(?:a\s+)?(?:new\s+)?(?:news\s+)?source', 'ADD_SOURCE'),
         (r'include\s+(?:a\s+)?(?:new\s+)?website', 'ADD_SOURCE'),
+        (r'add\s+(?:a\s+)?news\s+website', 'ADD_SOURCE'),
+        (r'track\s+(?:a\s+)?new\s+(?:website|source)', 'ADD_SOURCE'),
         
-        # HELP
-        (r'help|what\s+can\s+you\s+do|commands', 'HELP'),
+        # ==========================================
+        # HELP patterns
+        # ==========================================
+        (r'help|what\s+can\s+you\s+do|commands|how\s+to\s+use', 'HELP'),
+        (r'how\s+do\s+i|how\s+to|how\s+can\s+i', 'HELP'),
+        (r'what\s+(?:commands|options)\s+(?:are\s+)?available', 'HELP'),
     ]
     
-    # Category keywords for entity extraction
+    # Category keywords for entity extraction (EXPANDED)
     CATEGORY_KEYWORDS = {
-        'automotive': ['car', 'automotive', 'vehicle', 'auto', 'mahindra', 'tata', 'maruti', 'hyundai', 'kia', 'toyota', 'honda', 'bike', 'motorcycle'],
-        'bollywood': ['bollywood', 'actor', 'actress', 'movie', 'film', 'star', 'hero', 'heroine', 'shah rukh', 'salman', 'amitabh'],
-        'cricket': ['cricket', 'player', 'batsman', 'bowler', 'ipl', 'bcci', 'virat', 'rohit', 'dhoni'],
-        'business': ['company', 'business', 'industrialist', 'tycoon', 'mukesh ambani', 'gautam adani', 'ratan tata'],
-        'real_estate': ['real estate', 'property', 'builder', 'developer', 'lodha', 'hiranandani'],
-        'tech': ['tech', 'startup', 'entrepreneur', 'founder', 'byju', 'ola', 'paytm'],
+        'automotive': [
+            'car', 'automotive', 'vehicle', 'auto', 'automobile', 'motor',
+            'mahindra', 'tata', 'maruti', 'hyundai', 'kia', 'toyota', 'honda',
+            'bike', 'motorcycle', 'tractor', 'truck', 'bus', 'commercial vehicle',
+            'sonalika', 'tafe', 'john deere', 'ashok leyland', 'eicher', 'bajaj',
+            'tvs', 'force motors', 'skoda', 'volkswagen', 'bmw', 'mercedes'
+        ],
+        'bollywood': [
+            'bollywood', 'actor', 'actress', 'movie', 'film', 'star', 'hero', 'heroine',
+            'shah rukh', 'salman', 'amitabh', 'akshay', 'hrithik', 'ranveer', 'ranbir',
+            'deepika', 'priyanka', 'alia', 'kareena', 'katrina', 'anushka', 'ajay',
+            'cinema', 'hollywood', 'film star', 'celebrity'
+        ],
+        'cricket': [
+            'cricket', 'player', 'batsman', 'bowler', 'wicketkeeper', 'all-rounder',
+            'ipl', 'bcci', 'icc', 'test match', 'odi', 't20',
+            'virat', 'rohit', 'dhoni', 'sachin', 'hardik', 'kl rahul', 'bumrah',
+            'indian team', 'cricketer', 'match', 'world cup'
+        ],
+        'business': [
+            'company', 'business', 'industrialist', 'tycoon', 'magnate', 'corporate',
+            'mukesh ambani', 'gautam adani', 'ratan tata', 'kumar birla', 'azim premji',
+            'entrepreneur', 'ceo', 'chairman', 'founder', 'owner', 'industry',
+            'reliance', 'tata group', 'adani group', 'birl', 'wipro', 'infosys'
+        ],
+        'real_estate': [
+            'real estate', 'property', 'realty', 'builder', 'developer', 'construction',
+            'lodha', 'hiranandani', 'oberoi', 'godrej properties', 'dlf', 'unitech',
+            'apartment', 'flat', 'house', 'land', 'plot', 'commercial property',
+            'housing', 'infrastructure', 'building', 'project'
+        ],
+        'tech': [
+            'tech', 'technology', 'startup', 'entrepreneur', 'founder', 'unicorn',
+            'byju', 'ola', 'paytm', 'zomato', 'swiggy', 'flipkart', 'amazon india',
+            'software', 'app', 'platform', 'digital', 'it company', 'fintech',
+            'edtech', 'e-commerce', 'internet', 'ai', 'artificial intelligence'
+        ],
+        'politics': [
+            'politician', 'minister', 'pm', 'chief minister', 'mp', 'mla',
+            'modi', 'amit shah', 'rahul gandhi', 'kejriwal', 'mamata',
+            'government', 'bjp', 'congress', 'election', 'parliament', 'cabinet'
+        ],
     }
     
     # Common company/person name patterns
@@ -104,14 +184,104 @@ class IntentParser:
         """
         message_lower = message.lower().strip()
         
-        # Try pattern matching first
+        # Try pattern matching first (highest confidence)
         for pattern, intent_type in self.compiled_patterns:
             match = pattern.search(message)
             if match:
                 return self._build_intent(intent_type, match, message)
         
+        # Pattern matching failed - try AI heuristic fallback
+        fallback_intent = self._ai_heuristic_parse(message)
+        if fallback_intent:
+            logger.info(f"AI heuristic matched intent: {fallback_intent.intent_type}")
+            return fallback_intent
+        
         # No pattern matched - will fall back to generic /fix
         logger.info(f"No intent pattern matched for: {message}")
+        return None
+    
+    def _ai_heuristic_parse(self, message: str) -> Optional[ParsedIntent]:
+        """
+        AI-style heuristic parsing for vague commands that don't match regex patterns
+        Uses keyword matching and context analysis
+        """
+        message_lower = message.lower().strip()
+        
+        # Heuristic 1: Check for "add/increase/more" + category keywords
+        add_keywords = ['add', 'include', 'more', 'extra', 'additional', 'new', 'put', 'insert']
+        if any(kw in message_lower for kw in add_keywords):
+            # Detect category
+            category = self._detect_category(message)
+            if category:
+                entities = self._extract_entities(message, category)
+                if entities:
+                    return ParsedIntent(
+                        intent_type='ADD_COMPANIES',
+                        category=category,
+                        entities=entities,
+                        target_file='config/celebrities.yaml',
+                        confidence=0.65,  # Lower confidence for heuristic
+                        original_text=message,
+                        suggested_changes=f"Add {len(entities)} {category} items: {', '.join(entities[:3])}..."
+                    )
+        
+        # Heuristic 2: Check for "remove/delete/less/stop" 
+        remove_keywords = ['remove', 'delete', 'stop', 'drop', 'less', 'exclude', 'take out']
+        if any(kw in message_lower for kw in remove_keywords):
+            category = self._detect_category(message)
+            entities = self._extract_entities(message, category)
+            if entities:
+                return ParsedIntent(
+                    intent_type='REMOVE_ITEM',
+                    category=category,
+                    entities=entities,
+                    target_file='config/celebrities.yaml',
+                    confidence=0.60,
+                    original_text=message,
+                    suggested_changes=f"Remove {', '.join(entities)}"
+                )
+        
+        # Heuristic 3: Check for "show/list/what/see" 
+        list_keywords = ['show', 'list', 'what', 'see', 'tell me', 'display', 'view', 'get']
+        if any(kw in message_lower for kw in list_keywords):
+            category = self._detect_category(message)
+            return ParsedIntent(
+                intent_type='LIST_ITEMS',
+                category=category,
+                entities=[],
+                target_file='config/celebrities.yaml',
+                confidence=0.55,
+                original_text=message,
+                suggested_changes=f"Show {category or 'all'} tracked items"
+            )
+        
+        # Heuristic 4: Check for "time/schedule/when/hour" 
+        time_keywords = ['time', 'schedule', 'when', 'hour', 'am', 'pm', 'morning', 'evening']
+        if any(kw in message_lower for kw in time_keywords):
+            return ParsedIntent(
+                intent_type='CHANGE_TIME',
+                category=None,
+                entities=[],
+                target_file='config/schedules.yaml',
+                confidence=0.55,
+                original_text=message,
+                suggested_changes="Change digest schedule time"
+            )
+        
+        # Heuristic 5: Check for capitalized names (likely adding someone)
+        capitalized_words = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', message)
+        if len(capitalized_words) >= 1 and len(message.split()) <= 10:
+            category = self._detect_category(message)
+            return ParsedIntent(
+                intent_type='ADD_COMPANIES',
+                category=category,
+                entities=capitalized_words,
+                target_file='config/celebrities.yaml',
+                confidence=0.50,  # Low confidence - just guessing
+                original_text=message,
+                suggested_changes=f"Possibly adding: {', '.join(capitalized_words[:3])}..."
+            )
+        
         return None
     
     def _build_intent(self, intent_type: str, match: re.Match, original_text: str) -> ParsedIntent:
