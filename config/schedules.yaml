@@ -4,7 +4,7 @@
 digests:
   morning:
     enabled: true
-    time: "08:00"  # 8:00 AM
+    time: "07:00"  # 7:00 AM IST
     timezone: "Asia/Kolkata"
     days:
       - monday
@@ -21,7 +21,7 @@ digests:
 
   evening:
     enabled: true
-    time: "16:15"  # 4:15 PM (changed from 4:00 PM)
+    time: "16:00"  # 4:00 PM IST
     timezone: "Asia/Kolkata"
     days:
       - monday

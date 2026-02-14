@@ -17,6 +17,13 @@ from datetime import datetime
 from typing import Optional
 from dotenv import load_dotenv
 
+# Import pytz for timezone support
+try:
+    import pytz
+    IST = pytz.timezone('Asia/Kolkata')
+except ImportError:
+    IST = None  # Will use system local time
+
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -133,18 +140,24 @@ class KhabriRunner:
 
     async def run_digest_cycle(self):
         """Check and run scheduled digests"""
-        now = datetime.now()
+        # Use IST timezone if available, otherwise system local time
+        if IST:
+            now = datetime.now(IST)
+        else:
+            now = datetime.now()
         today = now.date()
 
-        # Check morning digest (7:00 AM - 7:30 AM window)
-        if 7 <= now.hour < 8 and now.minute < 30:
+        # Check morning digest (7:00 AM - 7:30 AM IST window)
+        if now.hour == 7 and now.minute < 30:
             if self.last_morning_digest != today:
+                logger.info(f"Triggering morning digest at {now.strftime('%H:%M')} IST")
                 await self._run_morning_digest()
                 self.last_morning_digest = today
 
-        # Check evening digest (4:00 PM - 4:30 PM window)
-        if 16 <= now.hour < 17 and now.minute < 30:
+        # Check evening digest (4:00 PM - 4:30 PM IST window)
+        if now.hour == 16 and now.minute < 30:
             if self.last_evening_digest != today:
+                logger.info(f"Triggering evening digest at {now.strftime('%H:%M')} IST")
                 await self._run_evening_digest()
                 self.last_evening_digest = today
 
