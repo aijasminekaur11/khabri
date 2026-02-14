@@ -128,14 +128,18 @@ class ConfigExecutor:
         """
         logger.info(f"Executing intent: {intent.intent_type} (confidence: {intent.confidence:.2%})")
 
-        # Validate confidence threshold
-        if intent.confidence < self.VALIDATION_RULES['confidence']['min']:
-            return ExecutionResult(
-                success=False,
-                message=f"❌ Confidence too low ({intent.confidence:.0%}). Please rephrase your command more clearly.",
-                intent_type=intent.intent_type,
-                error="LOW_CONFIDENCE"
-            )
+        # Skip confidence check for read-only operations
+        read_only_intents = ['LIST_ITEMS', 'SHOW_CONFIG', 'SHOW_SCHEDULE', 'SHOW_STATS', 'CHECK_STATUS']
+
+        if intent.intent_type not in read_only_intents:
+            # Validate confidence threshold for write operations
+            if intent.confidence < 0.5:  # Lowered from 0.65 to 0.5
+                return ExecutionResult(
+                    success=False,
+                    message=f"❌ Confidence too low ({intent.confidence:.0%}). Please rephrase your command more clearly.",
+                    intent_type=intent.intent_type,
+                    error="LOW_CONFIDENCE"
+                )
 
         # Route to appropriate executor method
         executor_map = {

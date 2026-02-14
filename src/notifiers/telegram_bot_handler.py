@@ -631,15 +631,29 @@ Need help? Contact support or check the GitHub repository.
 
     def handle_smart_intent(self, chat_id: str, intent: ParsedIntent) -> bool:
         """
-        Handle parsed smart intent with confirmation UI
-        
+        Handle parsed smart intent with confirmation UI (or direct execution for read-only)
+
         Args:
             chat_id: Chat ID to respond to
             intent: Parsed intent from user's message
-            
+
         Returns:
             True if handled successfully
         """
+        # Read-only intents execute immediately without confirmation
+        read_only_intents = ['LIST_ITEMS', 'SHOW_CONFIG', 'SHOW_SCHEDULE', 'SHOW_STATS', 'CHECK_STATUS', 'HELP']
+
+        if intent.intent_type in read_only_intents:
+            # Execute directly without confirmation
+            try:
+                from utils.config_executor import ConfigExecutor
+            except ImportError:
+                from src.utils.config_executor import ConfigExecutor
+
+            executor = ConfigExecutor()
+            result = executor.execute(intent, user_id=chat_id)
+            self.send_message(chat_id, result.message, parse_mode='Markdown')
+            return result.success
         logger.info(f"Handling smart intent: {intent.intent_type} with confidence {intent.confidence}")
         
         # Build confirmation message
