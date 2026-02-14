@@ -1,315 +1,299 @@
-# =============================================================================
 # Keywords Configuration
-# Defines search terms and patterns for news filtering and categorization
-# =============================================================================
+# Define keywords for different categories to filter and score news articles
 
-# Priority Keywords - Highest importance, trigger immediate alerts
-priority:
-  # Metro & Rail Infrastructure (HIGHEST PRIORITY)
-  metro:
-    - metro
-    - metro line
-    - metro corridor
-    - metro extension
-    - metro station
-    - metro rail
-    - rapid transit
-    - DMRC
-    - Delhi Metro
-    - Mumbai Metro
-    - Bangalore Metro
-    - Namma Metro
-    - Kochi Metro
-    - Lucknow Metro
-    - Jaipur Metro
-    - metro announcement
-    - metro project
-    - metro route
-    - metro alignment
-    - metro approval
-
-  # Expressway & Highway Infrastructure
-  expressway:
-    - expressway
-    - highway
-    - express highway
-    - access controlled highway
-    - NH
-    - national highway
-    - state highway
-    - elevated corridor
-    - bypass
-    - ring road
-    - orbital corridor
-    - greenfield expressway
-    - Delhi-Mumbai Expressway
-    - Mumbai-Nagpur Expressway
-    - Purvanchal Expressway
-    - Bundelkhand Expressway
-    - expressway inauguration
-    - highway project
-
-  # Airport Development
-  airport:
-    - airport
-    - international airport
-    - domestic airport
-    - aerocity
-    - airport city
-    - aviation hub
-    - air cargo
-    - airport expansion
-    - new airport
-    - airport development
-    - aerotropolis
-    - airport metro
-    - airport connectivity
-    - terminal expansion
-
-# Government Housing Schemes & Development Authorities
-housing_schemes:
-  # DDA (Delhi Development Authority)
-  dda:
-    - DDA
-    - Delhi Development Authority
-    - DDA housing scheme
-    - DDA flats
-    - DDA draw
-    - DDA lottery
-    - DDA land pooling
-    - DDA master plan
-    - DDA affordable housing
-    - DDA registration
-
-  # MHADA (Maharashtra Housing and Area Development Authority)
-  mhada:
-    - MHADA
-    - MAHADA
-    - Maharashtra Housing
-    - MHADA lottery
-    - MHADA scheme
-    - MHADA flats
-    - MHADA mumbai
-    - MHADA affordable
-
-  # SIDCO (State Industrial Development Corporations)
-  sidco:
-    - SIDCO
-    - State Industrial Development
-    - TIDCO
-    - RIICO
-    - MIDC
-    - industrial township
-    - industrial area development
-
-  # State Development Authorities
-  state_authorities:
-    - development authority
-    - housing board
-    - urban development
-    - HUDA
-    - PUDA
-    - BUDA
-    - GDA
-    - Greater Noida Authority
-    - Noida Authority
-    - Yamuna Authority
-    - new township
-    - smart city
-    - planned city
-    - satellite city
-    - integrated township
-    - master plan
-    - zonal plan
-
-  # PMAY (Pradhan Mantri Awas Yojana)
-  pmay:
-    - PMAY
-    - Pradhan Mantri Awas Yojana
-    - PM Awas Yojana
-    - PMAY Urban
-    - PMAY Gramin
-    - PMAY-U
-    - PMAY-G
-    - affordable housing scheme
-    - EWS housing
-    - LIG housing
-    - Credit Linked Subsidy
-    - CLSS
-    - housing for all
-    - affordable rental housing
-    - ARH
-
-# Celebrity Real Estate Transactions
-celebrity:
-  transactions:
-    - celebrity
-    - actor
-    - actress
-    - cricketer
-    - bollywood
-    - film star
-    - bought property
-    - sold property
-    - celebrity home
-    - celebrity apartment
-    - celebrity office
-    - celebrity villa
-    - rented property
-    - celebrity tenant
-    - celebrity landlord
-    - luxury apartment celebrity
-    - penthouse celebrity
-    - farmhouse celebrity
-    - celebrity real estate
-    - star property
-
-  # Indian Celebrities (Examples - can be expanded)
-  names:
-    - Shah Rukh Khan
-    - Amitabh Bachchan
-    - Akshay Kumar
-    - Salman Khan
-    - Virat Kohli
-    - MS Dhoni
-    - Sachin Tendulkar
-    - Deepika Padukone
-    - Priyanka Chopra
-    - Ranbir Kapoor
-    - Alia Bhatt
-    - Hrithik Roshan
-
-# Policy & Regulatory Changes
-policy:
-  # Building & Construction Laws
-  building_laws:
-    - building bylaws
-    - construction law
-    - building code
-    - NBC
-    - National Building Code
-    - construction regulation
-    - building regulation
-    - FAR
-    - floor area ratio
-    - FSI
-    - floor space index
-    - setback norms
-    - height restriction
-    - building permission
-    - construction permit
-    - occupancy certificate
-    - completion certificate
-    - building approval
-    - DCR
-    - development control rules
-
-  # GST & Tax in Construction
-  gst_construction:
-    - GST construction
-    - GST real estate
-    - GST housing
-    - GST rate construction
-    - construction tax
-    - real estate GST
-    - GST affordable housing
-    - GST input credit
-    - GST compliance construction
-    - stamp duty
-    - registration charges
-    - property tax
-
-  # General Policy Changes
-  general_policy:
-    - policy change
-    - new policy
-    - government policy
-    - regulatory change
-    - law amendment
-    - ordinance
-    - notification
-    - circular
-    - ministry notification
-    - cabinet approval
-    - policy announcement
-
-# Real Estate Market (General - Lower Priority)
+# Real Estate Keywords
 real_estate:
-  general:
-    - real estate
-    - property market
-    - housing market
-    - realty sector
-    - property sector
+  primary:
+    - name: "MagicBricks"
+      weight: 10
+      aliases: ["Magic Bricks", "magicbricks.com"]
+    - name: "Housing.com"
+      weight: 8
+      aliases: ["housing.com"]
+    - name: "99acres"
+      weight: 8
+      aliases: ["99 acres", "99acres.com"]
+    - name: "PropTiger"
+      weight: 7
+      aliases: ["Prop Tiger"]
 
-# Infrastructure (General)
+  secondary:
+    - name: "real estate"
+      weight: 5
+    - name: "property"
+      weight: 5
+    - name: "housing"
+      weight: 5
+    - name: "residential"
+      weight: 4
+    - name: "commercial property"
+      weight: 4
+    - name: "RERA"
+      weight: 6
+    - name: "home loan"
+      weight: 4
+    - name: "mortgage"
+      weight: 4
+    - name: "land acquisition"
+      weight: 6
+    - name: "land purchase"
+      weight: 6
+    - name: "land deal"
+      weight: 6
+    - name: "plot purchase"
+      weight: 5
+    - name: "real estate investment"
+      weight: 5
+
+# Infrastructure Keywords
 infrastructure:
-  general:
-    - infrastructure
-    - urban infrastructure
-    - development project
-    - public transport
-    - connectivity
-    - infrastructure project
+  primary:
+    - name: "infrastructure"
+      weight: 7
+    - name: "construction"
+      weight: 6
+    - name: "smart city"
+      weight: 7
+    - name: "metro rail"
+      weight: 6
+    - name: "highway"
+      weight: 5
+    - name: "expressway"
+      weight: 6
+    - name: "NHAI"
+      weight: 6
+    - name: "National Highway"
+      weight: 5
 
-# EXCLUDED KEYWORDS - News containing these will be filtered out
-excluded:
-  competitor:
-    - MagicBricks competitor
-    - 99acres
-    - Housing.com
-    - PropTiger
-    - Makaan.com
-    - CommonFloor
-    - NoBroker
-    - Zillow India
+  secondary:
+    - name: "urban development"
+      weight: 5
+    - name: "infrastructure project"
+      weight: 6
+    - name: "public works"
+      weight: 4
+    - name: "development plan"
+      weight: 5
+    - name: "land development"
+      weight: 6
+    - name: "township"
+      weight: 5
+    - name: "industrial park"
+      weight: 5
+    - name: "special economic zone"
+      weight: 5
+    - name: "SEZ"
+      weight: 5
+    - name: "buying land"
+      weight: 6
+    - name: "land acquisition plan"
+      weight: 6
+    - name: "infrastructure investment"
+      weight: 6
 
-  market_research:
-    - market research report
-    - residential dynamics
-    - property analysis report
-    - market analysis
-    - research report
-    - quarterly report
-    - market survey
-    - property price analysis
-    - price trend analysis
-    - market trend report
-    - residential report
-    - commercial report
-    - real estate research
+# Automotive Industry Keywords
+automotive:
+  primary:
+    # Major automotive companies requested
+    - name: "Mahindra"
+      weight: 8
+      aliases: ["M&M", "Mahindra & Mahindra", "Mahindra Group"]
+    - name: "Tata Motors"
+      weight: 8
+      aliases: ["Tata", "TML"]
+    - name: "Sonalika"
+      weight: 7
+      aliases: ["Sonalika Tractors", "International Tractors Limited"]
+    - name: "TAFE"
+      weight: 7
+      aliases: ["Tractors and Farm Equipment", "TAFE Motors"]
+    - name: "John Deere"
+      weight: 7
+      aliases: ["JD", "Deere & Company"]
+    - name: "Ashok Leyland"
+      weight: 8
+      aliases: ["AL", "Ashok Leyland Ltd"]
 
-  # Soft exclusions - lower weight but not hard filter
-  low_priority:
-    - celebrity gossip
-    - entertainment news
-    - movie release
-    - cricket match
-    - IPL
+  secondary:
+    # Other major automotive players
+    - name: "Maruti Suzuki"
+      weight: 7
+      aliases: ["Maruti", "MSIL"]
+    - name: "Hyundai"
+      weight: 6
+    - name: "Kia"
+      weight: 6
+    - name: "Honda"
+      weight: 6
+    - name: "Toyota"
+      weight: 6
+    - name: "Ford"
+      weight: 5
+    - name: "Volkswagen"
+      weight: 5
+    - name: "Renault"
+      weight: 5
+    - name: "Nissan"
+      weight: 5
+    - name: "MG Motor"
+      weight: 5
+    - name: "Bajaj Auto"
+      weight: 6
+    - name: "Hero MotoCorp"
+      weight: 6
+    - name: "TVS Motor"
+      weight: 6
+    - name: "Royal Enfield"
+      weight: 5
+    - name: "Eicher Motors"
+      weight: 5
 
-# Scoring Weights for Keyword Categories
-scoring:
-  priority:
-    metro: 10
-    expressway: 9
-    airport: 9
-  housing_schemes:
-    dda: 8
-    mhada: 8
-    sidco: 7
-    state_authorities: 7
-    pmay: 9
-  celebrity:
-    transactions: 7
-  policy:
-    building_laws: 8
-    gst_construction: 8
-    general_policy: 7
-  real_estate:
-    general: 5
-  infrastructure:
-    general: 6
-  excluded:
-    competitor: -10
-    market_research: -10
-    low_priority: -3
+  industry_terms:
+    - name: "automotive industry"
+      weight: 5
+    - name: "automobile sector"
+      weight: 5
+    - name: "vehicle sales"
+      weight: 4
+    - name: "electric vehicle"
+      weight: 6
+    - name: "EV"
+      weight: 6
+    - name: "tractor sales"
+      weight: 5
+    - name: "commercial vehicle"
+      weight: 5
+    - name: "passenger vehicle"
+      weight: 4
+    - name: "automotive manufacturing"
+      weight: 5
+    - name: "auto exports"
+      weight: 4
+    - name: "automotive plant"
+      weight: 5
+    - name: "vehicle production"
+      weight: 4
+    - name: "automotive expansion"
+      weight: 6
+    - name: "auto investment"
+      weight: 6
+
+# Policy & Regulatory Keywords
+policy:
+  primary:
+    - name: "RBI"
+      weight: 9
+      aliases: ["Reserve Bank of India", "Reserve Bank"]
+    - name: "PMAY"
+      weight: 8
+      aliases: ["Pradhan Mantri Awas Yojana", "PM Awas Yojana"]
+    - name: "GST"
+      weight: 7
+      aliases: ["Goods and Services Tax"]
+    - name: "budget"
+      weight: 7
+    - name: "policy"
+      weight: 6
+
+  secondary:
+    - name: "regulation"
+      weight: 5
+    - name: "government scheme"
+      weight: 6
+    - name: "subsidy"
+      weight: 5
+    - name: "tax benefit"
+      weight: 5
+    - name: "ministry"
+      weight: 4
+    - name: "cabinet approval"
+      weight: 6
+
+# Competitor Keywords
+competitor:
+  primary:
+    - name: "Zillow"
+      weight: 7
+    - name: "Redfin"
+      weight: 7
+    - name: "Trulia"
+      weight: 6
+    - name: "Realtor.com"
+      weight: 6
+
+  secondary:
+    - name: "competitor"
+      weight: 5
+    - name: "market share"
+      weight: 4
+    - name: "industry leader"
+      weight: 4
+
+# Celebrity & Influencer Keywords
+celebrity:
+  bollywood:
+    - "Shah Rukh Khan"
+    - "Salman Khan"
+    - "Aamir Khan"
+    - "Akshay Kumar"
+    - "Amitabh Bachchan"
+    - "Hrithik Roshan"
+    - "Ranbir Kapoor"
+    - "Ranveer Singh"
+
+  cricket:
+    - "Virat Kohli"
+    - "MS Dhoni"
+    - "Rohit Sharma"
+    - "Sachin Tendulkar"
+    - "Sourav Ganguly"
+
+  business:
+    - "Mukesh Ambani"
+    - "Gautam Adani"
+    - "Ratan Tata"
+    - "Anand Mahindra"
+    - "Azim Premji"
+    - "Shiv Nadar"
+    - "Uday Kotak"
+
+# Breaking News Indicators
+breaking:
+  - name: "breaking"
+    weight: 10
+  - name: "urgent"
+    weight: 9
+  - name: "alert"
+    weight: 8
+  - name: "just in"
+    weight: 9
+  - name: "developing"
+    weight: 7
+  - name: "live updates"
+    weight: 8
+
+# Negative Sentiment Keywords (for risk detection)
+negative:
+  - "scam"
+  - "fraud"
+  - "scandal"
+  - "controversy"
+  - "lawsuit"
+  - "investigation"
+  - "complaint"
+  - "penalty"
+  - "violation"
+  - "ban"
+
+# Positive Sentiment Keywords (for opportunity detection)
+positive:
+  - "launch"
+  - "expansion"
+  - "growth"
+  - "investment"
+  - "acquisition"
+  - "partnership"
+  - "innovation"
+  - "award"
+  - "success"
+  - "milestone"

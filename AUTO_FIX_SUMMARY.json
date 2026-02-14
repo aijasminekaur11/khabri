@@ -1,13 +1,12 @@
 {
   "success": true,
-  "issue_number": 25,
+  "issue_number": 26,
   "modified_files": [
-    "/home/runner/work/khabri/khabri/.github/workflows/scheduled-digest.yml",
-    "/home/runner/work/khabri/khabri/src/notifiers/telegram_notifier.py"
+    "/home/runner/work/khabri/khabri/config/keywords.yaml"
   ],
   "tests_passed": true,
-  "summary": "Fixed timezone conversion issues by adding explicit IST timezone handling in workflow and telegram notifier, with detailed logging to track execution times and ensure morning digest runs at correct IST time (7:05 AM IST = 1:35 AM UTC).",
+  "summary": "Added automotive industry companies (Mahindra, Tata, Sonalika, TAFE, JD, Ashok Leyland) and infrastructure/land acquisition keywords to keywords configuration.",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~599 lines)",
+  "size_reason": "Too many lines changed (~300 lines)",
   "auto_commit": false
 }
