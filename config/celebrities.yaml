@@ -90,6 +90,11 @@ automotive:
     priority: medium
     description: "Indian automotive company, owner of Royal Enfield"
     keywords: ["automotive", "motorcycles", "commercial vehicles"]
+  - name: "MG Hector"
+    aliases: ["MG Motor", "Morris Garages", "MG India", "Hector"]
+    priority: medium
+    description: "British automotive brand owned by SAIC Motor, popular for Hector SUV in India"
+    keywords: ["automotive", "SUV", "passenger cars", "electric vehicles", "MG ZS EV"]
 
 # Politicians
 politics:
