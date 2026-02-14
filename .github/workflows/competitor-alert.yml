@@ -8,6 +8,10 @@
 
 name: 🏢 Competitor Watch
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   schedule:
     # Morning: 8:00 AM IST = 2:30 AM UTC

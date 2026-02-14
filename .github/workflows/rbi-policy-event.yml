@@ -9,6 +9,10 @@
 
 name: 🏦 RBI Policy Live Alerts
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   schedule:
     # During RBI Policy (Feb 7, 2026): Every 15 minutes from 10 AM to 1 PM IST

@@ -9,6 +9,10 @@
 
 name: 🏛️ Budget 2026 Live Alerts
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   schedule:
     # During Budget (Feb 1, 2026): Every 10 minutes from 11 AM to 2 PM IST

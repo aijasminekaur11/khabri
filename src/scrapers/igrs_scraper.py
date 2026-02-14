@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.config import ConfigManager
+from src.utils import can_fetch
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,11 @@ class IGRSScraper:
         url = source['url']
         rate_limit = source.get('rate_limit_ms', 3000)  # Be polite to govt sites
         selectors = source.get('selectors', {})
+
+        # Check robots.txt compliance
+        if not can_fetch(url):
+            logger.warning(f"robots.txt disallows IGRS scraping {source_id}: {url}")
+            return []
 
         # Respect rate limiting
         self._respect_rate_limit(source_id, rate_limit)

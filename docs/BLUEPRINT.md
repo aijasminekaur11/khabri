@@ -1164,15 +1164,15 @@ magic-bricks-alerts/
 ```yaml
 # Repository Settings → Secrets → Actions
 
-TELEGRAM_BOT_TOKEN: "7123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"
-TELEGRAM_CHAT_ID: "123456789"
-GMAIL_ADDRESS: "your.email@gmail.com"
-GMAIL_APP_PASSWORD: "abcd efgh ijkl mnop"
-RECIPIENT_EMAIL: "wife.email@gmail.com"
+TELEGRAM_BOT_TOKEN: "[YOUR_BOT_TOKEN_FROM_BOTFATHER]"
+TELEGRAM_CHAT_ID: "[YOUR_CHAT_ID]"
+GMAIL_ADDRESS: "[YOUR_EMAIL@gmail.com]"
+GMAIL_APP_PASSWORD: "[YOUR_APP_PASSWORD]"
+RECIPIENT_EMAIL: "[RECIPIENT_EMAIL@gmail.com]"
 
 # Optional
-GOOGLE_NEWS_API_KEY: "your-api-key"
-TWITTER_BEARER_TOKEN: "your-token"
+GOOGLE_NEWS_API_KEY: "[OPTIONAL_API_KEY]"
+TWITTER_BEARER_TOKEN: "[OPTIONAL_TOKEN]"
 ```
 
 ## 9.3 GitHub Actions Workflow

@@ -8,6 +8,10 @@
 
 name: 🩺 Weekly Health Check
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   schedule:
     # Every Monday at 7:30 AM IST = 2:00 AM UTC

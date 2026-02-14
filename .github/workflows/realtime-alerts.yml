@@ -8,6 +8,10 @@
 
 name: ⚡ Real-time Alerts
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   schedule:
     # Every 15 minutes during active hours (8 AM - 9 PM IST)
