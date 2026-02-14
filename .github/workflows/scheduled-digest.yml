@@ -9,10 +9,11 @@ name: 📰 Scheduled News Digest
 
 on:
   schedule:
-    # Morning Digest - 7:05 AM IST = 1:35 AM UTC
+    # Morning Digest - 7:05 AM IST (UTC+5:30) = 1:35 AM UTC
+    # Cron format: minute hour day month day-of-week
     - cron: '35 1 * * *'
 
-    # Evening Digest - 4:07 PM IST = 10:37 AM UTC
+    # Evening Digest - 4:07 PM IST (UTC+5:30) = 10:37 AM UTC
     - cron: '37 10 * * *'
 
   # Allow manual trigger for testing
@@ -30,6 +31,8 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  # Explicitly set timezone for all operations
+  TZ: 'Asia/Kolkata'
 
 jobs:
   # ==========================================================================
@@ -66,16 +69,27 @@ jobs:
       - name: 🕐 Determine digest type
         id: digest-type
         run: |
+          # Log current time for debugging
+          echo "Current UTC time: $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "Current IST time: $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S')"
+          
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "type=${{ github.event.inputs.digest_type }}" >> $GITHUB_OUTPUT
+            echo "Manual trigger: ${{ github.event.inputs.digest_type }} digest"
           else
-            # Check current UTC hour to determine digest type
-            # Morning: 1:35 AM UTC (7:05 AM IST) - runs between 0-5 UTC
-            # Evening: 10:37 AM UTC (4:07 PM IST) - runs between 6-15 UTC
+            # Determine digest type based on UTC hour
+            # Morning: 1:35 AM UTC (7:05 AM IST) - UTC hour 1
+            # Evening: 10:37 AM UTC (4:07 PM IST) - UTC hour 10
             HOUR=$(date -u +%H)
-            if [ "$HOUR" -lt "6" ]; then
+            MINUTE=$(date -u +%M)
+            
+            echo "UTC Hour: $HOUR, Minute: $MINUTE"
+            
+            # Morning digest: UTC hour 0-5 (IST 5:30 AM - 10:30 AM)
+            if [ "$HOUR" -ge "0" ] && [ "$HOUR" -lt "6" ]; then
               echo "type=morning" >> $GITHUB_OUTPUT
               echo "Detected: Morning digest (UTC hour: $HOUR)"
+            # Evening digest: UTC hour 6-23 (IST 11:30 AM - 4:30 AM next day)
             else
               echo "type=evening" >> $GITHUB_OUTPUT
               echo "Detected: Evening digest (UTC hour: $HOUR)"
@@ -85,21 +99,27 @@ jobs:
       - name: 📰 Run News Scraper
         id: scrape
         run: |
+          echo "Starting news scraper at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
           python scripts/github_digest_runner.py scrape
+          echo "Scraping completed at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
         env:
           DIGEST_TYPE: ${{ steps.digest-type.outputs.type }}
 
       - name: 🔄 Process Articles
         id: process
         run: |
+          echo "Starting article processing at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
           python scripts/github_digest_runner.py process
+          echo "Processing completed at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
         env:
           DIGEST_TYPE: ${{ steps.digest-type.outputs.type }}
 
       - name: 📱 Send Telegram Notification
         if: success()
         run: |
+          echo "Sending Telegram notification at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
           python scripts/github_digest_runner.py notify telegram
+          echo "Telegram notification sent at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -108,7 +128,9 @@ jobs:
       - name: 📧 Send Email Notification
         if: success()
         run: |
+          echo "Sending email notification at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
           python scripts/github_digest_runner.py notify email
+          echo "Email notification sent at $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
         env:
           SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
           SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
@@ -132,11 +154,18 @@ jobs:
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Digest Type | ${{ steps.digest-type.outputs.type }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Run Time | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Scheduled Time (IST) | $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M IST') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actual Run Time (UTC) | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actual Run Time (IST) | $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M IST') |" >> $GITHUB_STEP_SUMMARY
           echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Timezone Verification" >> $GITHUB_STEP_SUMMARY
+          echo "- Morning digest should run at 7:05 AM IST (1:35 AM UTC)" >> $GITHUB_STEP_SUMMARY
+          echo "- Evening digest should run at 4:07 PM IST (10:37 AM UTC)" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Notify on Failure
         if: failure()
         run: |
           echo "Digest failed! Check logs above."
+          echo "Failure occurred at: $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST')"
         continue-on-error: true

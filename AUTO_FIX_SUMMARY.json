@@ -1,13 +1,13 @@
 {
   "success": true,
-  "issue_number": 24,
+  "issue_number": 25,
   "modified_files": [
-    "/home/runner/work/khabri/khabri/config/keywords.yaml",
-    "/home/runner/work/khabri/khabri/src/filters/keyword_filter.py"
+    "/home/runner/work/khabri/khabri/.github/workflows/scheduled-digest.yml",
+    "/home/runner/work/khabri/khabri/src/notifiers/telegram_notifier.py"
   ],
   "tests_passed": true,
-  "summary": "Created keywords.yaml configuration and KeywordFilter class to filter news based on user preferences: include metro/expressway/airport/housing schemes/celebrity real estate/policy changes, exclude competitor/market research reports.",
+  "summary": "Fixed timezone conversion issues by adding explicit IST timezone handling in workflow and telegram notifier, with detailed logging to track execution times and ensure morning digest runs at correct IST time (7:05 AM IST = 1:35 AM UTC).",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~572 lines)",
+  "size_reason": "Too many lines changed (~599 lines)",
   "auto_commit": false
 }

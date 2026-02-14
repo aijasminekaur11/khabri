@@ -8,6 +8,7 @@ import logging
 import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import pytz
 import requests
 from .base_notifier import BaseNotifier, NotificationError
 
@@ -24,6 +25,7 @@ class TelegramNotifier(BaseNotifier):
     - Support markdown formatting
     - Handle rate limiting (30 msgs/sec)
     - Implement retry logic with exponential backoff
+    - Display times in IST timezone
     """
 
     # Telegram message limits
@@ -56,6 +58,9 @@ class TelegramNotifier(BaseNotifier):
 
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
         self.last_send_time = 0
+        
+        # IST timezone for proper time display
+        self.ist_timezone = pytz.timezone('Asia/Kolkata')
 
     def _rate_limit(self):
         """Enforce rate limiting between messages"""
@@ -63,6 +68,26 @@ class TelegramNotifier(BaseNotifier):
         if elapsed < self.RATE_LIMIT_DELAY:
             time.sleep(self.RATE_LIMIT_DELAY - elapsed)
         self.last_send_time = time.time()
+
+    def _convert_to_ist(self, dt: datetime) -> datetime:
+        """
+        Convert datetime to IST timezone.
+        
+        Args:
+            dt: datetime object (timezone-aware or naive)
+            
+        Returns:
+            datetime object in IST timezone
+        """
+        if dt is None:
+            return datetime.now(self.ist_timezone)
+        
+        # If naive, assume UTC
+        if dt.tzinfo is None:
+            dt = pytz.utc.localize(dt)
+        
+        # Convert to IST
+        return dt.astimezone(self.ist_timezone)
 
     def _send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         """
@@ -164,7 +189,7 @@ class TelegramNotifier(BaseNotifier):
 
     def _format_digest(self, digest: Dict[str, Any]) -> str:
         """
-        Format digest for Telegram display
+        Format digest for Telegram display with IST timezone
 
         Args:
             digest: Digest dictionary
@@ -174,11 +199,17 @@ class TelegramNotifier(BaseNotifier):
         """
         digest_type = digest.get('type', 'unknown').upper()
         generated_at = digest.get('generated_at', datetime.now())
+        
+        # Convert to datetime if string
         if isinstance(generated_at, str):
             try:
-                generated_at = datetime.fromisoformat(generated_at)
+                generated_at = datetime.fromisoformat(generated_at.replace('Z', '+00:00'))
             except (ValueError, TypeError):
                 generated_at = datetime.now()
+        
+        # Convert to IST for display
+        generated_at_ist = self._convert_to_ist(generated_at)
+        
         news_items = digest.get('news_items', [])
 
         # Select emoji based on digest type
@@ -189,9 +220,9 @@ class TelegramNotifier(BaseNotifier):
         }
         emoji = emoji_map.get(digest_type, '📰')
 
-        # Build message header
+        # Build message header with IST time
         message = f"{emoji} *{digest_type} DIGEST* - Magic Bricks Daily Brief\n"
-        message += f"📅 {generated_at.strftime('%Y-%m-%d %H:%M')}\n\n"
+        message += f"📅 {generated_at_ist.strftime('%Y-%m-%d %H:%M IST')}\n\n"
         message += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
         # Group by category
