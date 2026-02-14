@@ -1,299 +1,242 @@
 # Keywords Configuration
-# Define keywords for different categories to filter and score news articles
+# Define keywords for news filtering and categorization
+# Used by NewsProcessor to identify relevant articles
 
 # Real Estate Keywords
 real_estate:
   primary:
-    - name: "MagicBricks"
-      weight: 10
-      aliases: ["Magic Bricks", "magicbricks.com"]
-    - name: "Housing.com"
-      weight: 8
-      aliases: ["housing.com"]
-    - name: "99acres"
-      weight: 8
-      aliases: ["99 acres", "99acres.com"]
-    - name: "PropTiger"
-      weight: 7
-      aliases: ["Prop Tiger"]
+    - "real estate"
+    - "property"
+    - "housing"
+    - "residential"
+    - "commercial real estate"
+    - "land acquisition"
+    - "land purchase"
+    - "land buying"
+    - "plot"
+    - "land deal"
+    - "real estate project"
+    - "township"
+    - "gated community"
 
-  secondary:
-    - name: "real estate"
-      weight: 5
-    - name: "property"
-      weight: 5
-    - name: "housing"
-      weight: 5
-    - name: "residential"
-      weight: 4
-    - name: "commercial property"
-      weight: 4
-    - name: "RERA"
-      weight: 6
-    - name: "home loan"
-      weight: 4
-    - name: "mortgage"
-      weight: 4
-    - name: "land acquisition"
-      weight: 6
-    - name: "land purchase"
-      weight: 6
-    - name: "land deal"
-      weight: 6
-    - name: "plot purchase"
-      weight: 5
-    - name: "real estate investment"
-      weight: 5
+  companies:
+    - "MagicBricks"
+    - "Housing.com"
+    - "99acres"
+    - "PropTiger"
+    - "CommonFloor"
+    - "Makaan"
+    - "NoBroker"
+    - "Square Yards"
+    - "Anarock"
+    - "CBRE"
+    - "JLL"
+    - "Knight Frank"
+    - "Colliers"
+    - "DLF"
+    - "Godrej Properties"
+    - "Prestige Group"
+    - "Sobha"
+    - "Brigade"
+    - "Oberoi Realty"
+    - "Lodha"
+    - "Mahindra Lifespaces"
+    - "Tata Housing"
+
+  schemes:
+    - "PMAY"
+    - "Pradhan Mantri Awas Yojana"
+    - "affordable housing"
+    - "subsidy"
+    - "RERA"
+    - "Real Estate Regulatory Authority"
+
+  segments:
+    - "luxury housing"
+    - "mid-segment"
+    - "affordable housing"
+    - "plotted development"
+    - "villa"
+    - "apartment"
+    - "penthouse"
+    - "studio apartment"
 
 # Infrastructure Keywords
 infrastructure:
   primary:
-    - name: "infrastructure"
-      weight: 7
-    - name: "construction"
-      weight: 6
-    - name: "smart city"
-      weight: 7
-    - name: "metro rail"
-      weight: 6
-    - name: "highway"
-      weight: 5
-    - name: "expressway"
-      weight: 6
-    - name: "NHAI"
-      weight: 6
-    - name: "National Highway"
-      weight: 5
+    - "infrastructure"
+    - "construction"
+    - "development project"
+    - "metro"
+    - "highway"
+    - "road project"
+    - "bridge"
+    - "flyover"
+    - "airport"
+    - "railway"
+    - "smart city"
+    - "urban development"
+    - "township development"
+    - "industrial park"
+    - "SEZ"
+    - "special economic zone"
 
-  secondary:
-    - name: "urban development"
-      weight: 5
-    - name: "infrastructure project"
-      weight: 6
-    - name: "public works"
-      weight: 4
-    - name: "development plan"
-      weight: 5
-    - name: "land development"
-      weight: 6
-    - name: "township"
-      weight: 5
-    - name: "industrial park"
-      weight: 5
-    - name: "special economic zone"
-      weight: 5
-    - name: "SEZ"
-      weight: 5
-    - name: "buying land"
-      weight: 6
-    - name: "land acquisition plan"
-      weight: 6
-    - name: "infrastructure investment"
-      weight: 6
+  automotive:
+    - "Mahindra"
+    - "Mahindra & Mahindra"
+    - "M&M"
+    - "Tata Motors"
+    - "Tata"
+    - "Sonalika"
+    - "Sonalika Tractors"
+    - "TAFE"
+    - "Tractors and Farm Equipment"
+    - "John Deere"
+    - "JD"
+    - "Ashok Leyland"
+    - "automotive industry"
+    - "automobile sector"
+    - "vehicle manufacturing"
+    - "tractor industry"
+    - "commercial vehicles"
+    - "farm equipment"
+    - "agricultural machinery"
 
-# Automotive Industry Keywords
-automotive:
-  primary:
-    # Major automotive companies requested
-    - name: "Mahindra"
-      weight: 8
-      aliases: ["M&M", "Mahindra & Mahindra", "Mahindra Group"]
-    - name: "Tata Motors"
-      weight: 8
-      aliases: ["Tata", "TML"]
-    - name: "Sonalika"
-      weight: 7
-      aliases: ["Sonalika Tractors", "International Tractors Limited"]
-    - name: "TAFE"
-      weight: 7
-      aliases: ["Tractors and Farm Equipment", "TAFE Motors"]
-    - name: "John Deere"
-      weight: 7
-      aliases: ["JD", "Deere & Company"]
-    - name: "Ashok Leyland"
-      weight: 8
-      aliases: ["AL", "Ashok Leyland Ltd"]
+  real_estate_plans:
+    - "land acquisition"
+    - "land purchase"
+    - "buying land"
+    - "land deal"
+    - "real estate investment"
+    - "property acquisition"
+    - "site acquisition"
+    - "land parcel"
+    - "industrial land"
+    - "commercial land"
+    - "expansion plan"
+    - "manufacturing facility"
+    - "plant setup"
+    - "factory land"
+    - "warehouse land"
 
-  secondary:
-    # Other major automotive players
-    - name: "Maruti Suzuki"
-      weight: 7
-      aliases: ["Maruti", "MSIL"]
-    - name: "Hyundai"
-      weight: 6
-    - name: "Kia"
-      weight: 6
-    - name: "Honda"
-      weight: 6
-    - name: "Toyota"
-      weight: 6
-    - name: "Ford"
-      weight: 5
-    - name: "Volkswagen"
-      weight: 5
-    - name: "Renault"
-      weight: 5
-    - name: "Nissan"
-      weight: 5
-    - name: "MG Motor"
-      weight: 5
-    - name: "Bajaj Auto"
-      weight: 6
-    - name: "Hero MotoCorp"
-      weight: 6
-    - name: "TVS Motor"
-      weight: 6
-    - name: "Royal Enfield"
-      weight: 5
-    - name: "Eicher Motors"
-      weight: 5
+  construction:
+    - "L&T"
+    - "Larsen & Toubro"
+    - "Shapoorji Pallonji"
+    - "GMR"
+    - "GVK"
+    - "Adani"
+    - "Reliance Infrastructure"
+    - "IRCON"
+    - "NBCC"
+    - "RITES"
 
-  industry_terms:
-    - name: "automotive industry"
-      weight: 5
-    - name: "automobile sector"
-      weight: 5
-    - name: "vehicle sales"
-      weight: 4
-    - name: "electric vehicle"
-      weight: 6
-    - name: "EV"
-      weight: 6
-    - name: "tractor sales"
-      weight: 5
-    - name: "commercial vehicle"
-      weight: 5
-    - name: "passenger vehicle"
-      weight: 4
-    - name: "automotive manufacturing"
-      weight: 5
-    - name: "auto exports"
-      weight: 4
-    - name: "automotive plant"
-      weight: 5
-    - name: "vehicle production"
-      weight: 4
-    - name: "automotive expansion"
-      weight: 6
-    - name: "auto investment"
-      weight: 6
+  policy:
+    - "infrastructure policy"
+    - "development plan"
+    - "master plan"
+    - "zoning"
+    - "FAR"
+    - "FSI"
+    - "building regulations"
+    - "construction norms"
 
 # Policy & Regulatory Keywords
 policy:
   primary:
-    - name: "RBI"
-      weight: 9
-      aliases: ["Reserve Bank of India", "Reserve Bank"]
-    - name: "PMAY"
-      weight: 8
-      aliases: ["Pradhan Mantri Awas Yojana", "PM Awas Yojana"]
-    - name: "GST"
-      weight: 7
-      aliases: ["Goods and Services Tax"]
-    - name: "budget"
-      weight: 7
-    - name: "policy"
-      weight: 6
+    - "RBI"
+    - "Reserve Bank of India"
+    - "interest rate"
+    - "repo rate"
+    - "monetary policy"
+    - "budget"
+    - "GST"
+    - "tax"
+    - "regulation"
+    - "policy"
+    - "government scheme"
+    - "ministry"
 
-  secondary:
-    - name: "regulation"
-      weight: 5
-    - name: "government scheme"
-      weight: 6
-    - name: "subsidy"
-      weight: 5
-    - name: "tax benefit"
-      weight: 5
-    - name: "ministry"
-      weight: 4
-    - name: "cabinet approval"
-      weight: 6
+  housing_finance:
+    - "home loan"
+    - "housing loan"
+    - "mortgage"
+    - "HDFC"
+    - "LIC Housing Finance"
+    - "PNB Housing"
+    - "Indiabulls Housing"
+    - "Dewan Housing"
+    - "LICHFL"
 
 # Competitor Keywords
 competitor:
   primary:
-    - name: "Zillow"
-      weight: 7
-    - name: "Redfin"
-      weight: 7
-    - name: "Trulia"
-      weight: 6
-    - name: "Realtor.com"
-      weight: 6
+    - "Housing.com"
+    - "99acres"
+    - "PropTiger"
+    - "CommonFloor"
+    - "Makaan"
+    - "NoBroker"
+    - "Square Yards"
 
-  secondary:
-    - name: "competitor"
-      weight: 5
-    - name: "market share"
-      weight: 4
-    - name: "industry leader"
-      weight: 4
+  actions:
+    - "acquisition"
+    - "merger"
+    - "funding"
+    - "valuation"
+    - "expansion"
+    - "launch"
+    - "partnership"
 
 # Celebrity & Influencer Keywords
 celebrity:
-  bollywood:
-    - "Shah Rukh Khan"
-    - "Salman Khan"
-    - "Aamir Khan"
-    - "Akshay Kumar"
-    - "Amitabh Bachchan"
-    - "Hrithik Roshan"
-    - "Ranbir Kapoor"
-    - "Ranveer Singh"
-
-  cricket:
-    - "Virat Kohli"
-    - "MS Dhoni"
-    - "Rohit Sharma"
-    - "Sachin Tendulkar"
-    - "Sourav Ganguly"
-
-  business:
-    - "Mukesh Ambani"
-    - "Gautam Adani"
-    - "Ratan Tata"
-    - "Anand Mahindra"
-    - "Azim Premji"
-    - "Shiv Nadar"
-    - "Uday Kotak"
+  actions:
+    - "property purchase"
+    - "buys property"
+    - "real estate investment"
+    - "new home"
+    - "villa"
+    - "mansion"
+    - "penthouse"
 
 # Breaking News Indicators
 breaking:
-  - name: "breaking"
-    weight: 10
-  - name: "urgent"
-    weight: 9
-  - name: "alert"
-    weight: 8
-  - name: "just in"
-    weight: 9
-  - name: "developing"
-    weight: 7
-  - name: "live updates"
-    weight: 8
+  indicators:
+    - "breaking"
+    - "urgent"
+    - "just in"
+    - "developing"
+    - "exclusive"
+    - "announced"
+    - "launches"
+    - "unveils"
 
-# Negative Sentiment Keywords (for risk detection)
+# Negative Sentiment Keywords
 negative:
-  - "scam"
-  - "fraud"
-  - "scandal"
-  - "controversy"
-  - "lawsuit"
-  - "investigation"
-  - "complaint"
-  - "penalty"
-  - "violation"
-  - "ban"
+  indicators:
+    - "scam"
+    - "fraud"
+    - "illegal"
+    - "violation"
+    - "penalty"
+    - "fine"
+    - "lawsuit"
+    - "controversy"
+    - "dispute"
+    - "delay"
+    - "stuck"
+    - "crisis"
 
-# Positive Sentiment Keywords (for opportunity detection)
+# Positive Sentiment Keywords
 positive:
-  - "launch"
-  - "expansion"
-  - "growth"
-  - "investment"
-  - "acquisition"
-  - "partnership"
-  - "innovation"
-  - "award"
-  - "success"
-  - "milestone"
+  indicators:
+    - "growth"
+    - "expansion"
+    - "launch"
+    - "success"
+    - "milestone"
+    - "achievement"
+    - "award"
+    - "recognition"
+    - "innovation"
+    - "breakthrough"

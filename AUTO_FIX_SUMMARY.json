@@ -1,12 +1,12 @@
 {
   "success": true,
-  "issue_number": 26,
+  "issue_number": 27,
   "modified_files": [
     "/home/runner/work/khabri/khabri/config/keywords.yaml"
   ],
   "tests_passed": true,
-  "summary": "Added automotive industry companies (Mahindra, Tata, Sonalika, TAFE, JD, Ashok Leyland) and infrastructure/land acquisition keywords to keywords configuration.",
+  "summary": "Added automotive industry companies (Mahindra, Tata, Sonalika, TAFE, John Deere, Ashok Leyland) and infrastructure/real-estate land acquisition keywords to the keywords configuration.",
   "change_size": "big",
-  "size_reason": "Too many lines changed (~300 lines)",
+  "size_reason": "Too many lines changed (~243 lines)",
   "auto_commit": false
 }
