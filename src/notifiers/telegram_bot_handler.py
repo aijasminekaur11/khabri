@@ -13,8 +13,10 @@ import time
 import logging
 import requests
 import json
+import asyncio
+import hashlib
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,12 @@ except ImportError:
 
 # Back-off delay (seconds) after polling errors to avoid tight loops
 _ERROR_BACKOFF_SECONDS = 5
+
+# Rate limiting for on-demand news (minutes between requests per user)
+_NEWS_RATE_LIMIT_MINUTES = 5
+
+# News keywords that trigger on-demand news
+NEWS_TRIGGER_KEYWORDS = ['news', 'latest news', 'get news', 'show news', 'fetch news']
 
 
 class TelegramBotHandler:
@@ -94,6 +102,14 @@ class TelegramBotHandler:
 
         # Track last update ID to avoid duplicate processing
         self.last_update_id = 0
+        
+        # Rate limiting storage for on-demand news {chat_id: last_request_time}
+        self._news_last_request: Dict[str, datetime] = {}
+        
+        # Cache for on-demand news results
+        self._news_cache: Optional[Dict[str, Any]] = None
+        self._news_cache_time: Optional[datetime] = None
+        self._news_cache_ttl_minutes = 2  # Cache news for 2 minutes
 
     def get_updates(self, offset: Optional[int] = None) -> List[Dict[str, Any]]:
         """
@@ -511,6 +527,13 @@ Please review manually: {issue_url}
         """
         help_text = """🤖 **Telegram Bot Commands**
 
+**Quick Actions:**
+
+📰 Type `news` or `/news` - Get latest real estate news instantly
+   • Fetches fresh news from multiple sources
+   • Rate limit: 1 request per 5 minutes
+   • Includes: Property, Infrastructure, Policy, Finance news
+
 **Available Commands:**
 
 📝 `/fix <description>` - Create automated fix request
@@ -532,20 +555,25 @@ Please review manually: {issue_url}
 ---
 
 **How it works:**
-1. **Smart Mode:** Just type what you want naturally
+1. **News:** Just type `news` anytime for instant updates
+   
+2. **Smart Mode:** Type what you want naturally
    → Bot will understand and ask for confirmation
    
-2. **Detailed Mode:** Use `/fix` for complex changes
+3. **Detailed Mode:** Use `/fix` for complex changes
    → Bot creates GitHub issue
    → Claude Code analyzes and fixes
    → You review and approve
 
 **Example Usage:**
 ```
+Instant news:
+→ news
+
 Smart commands (no / needed):
-- add car companies like Mahindra, Tata Motors
-- include real estate developers like Lodha
-- change evening digest to 5 PM
+→ add car companies like Mahindra, Tata Motors
+→ include real estate developers like Lodha
+→ change evening digest to 5 PM
 
 Detailed commands (/fix):
 /fix Budget alerts not filtering correctly
@@ -840,6 +868,362 @@ Would you like me to proceed with this change?"""
             logger.error(f"Error answering callback: {e}")
             return False
 
+    def _is_news_trigger(self, text: str) -> bool:
+        """
+        Check if the message text is a news trigger
+        
+        Args:
+            text: Message text from user
+            
+        Returns:
+            True if this is a news request
+        """
+        if not text:
+            return False
+        
+        text_lower = text.lower().strip()
+        
+        # Check for exact matches or simple news requests
+        if text_lower in NEWS_TRIGGER_KEYWORDS:
+            return True
+        
+        # Check for patterns like "send news", "get me news", etc.
+        news_patterns = [
+            r'^news$',
+            r'^latest\s+news$',
+            r'^send\s+(?:me\s+)?news',
+            r'^get\s+(?:me\s+)?(?:the\s+)?news',
+            r'^show\s+(?:me\s+)?news',
+            r'^fetch\s+news',
+        ]
+        
+        import re
+        for pattern in news_patterns:
+            if re.match(pattern, text_lower):
+                return True
+        
+        return False
+    
+    def _check_rate_limit(self, chat_id: str) -> tuple[bool, int]:
+        """
+        Check if user is rate limited for news requests
+        
+        Args:
+            chat_id: User's chat ID
+            
+        Returns:
+            Tuple of (is_allowed, seconds_remaining)
+        """
+        now = datetime.now()
+        last_request = self._news_last_request.get(chat_id)
+        
+        if last_request is None:
+            return True, 0
+        
+        elapsed = (now - last_request).total_seconds()
+        limit_seconds = _NEWS_RATE_LIMIT_MINUTES * 60
+        
+        if elapsed < limit_seconds:
+            remaining = int(limit_seconds - elapsed)
+            return False, remaining
+        
+        return True, 0
+    
+    def _get_cached_news(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get cached news if still valid
+        
+        Returns:
+            List of news articles or None if cache expired
+        """
+        if self._news_cache is None or self._news_cache_time is None:
+            return None
+        
+        elapsed = (datetime.now() - self._news_cache_time).total_seconds()
+        if elapsed > (self._news_cache_ttl_minutes * 60):
+            return None
+        
+        return self._news_cache
+    
+    def _set_news_cache(self, articles: List[Dict[str, Any]]):
+        """Cache news articles"""
+        self._news_cache = articles
+        self._news_cache_time = datetime.now()
+    
+    async def _fetch_news_on_demand(self) -> List[Dict[str, Any]]:
+        """
+        Fetch news on demand using the RSS scraper
+        
+        Returns:
+            List of processed news articles
+        """
+        # Check cache first
+        cached = self._get_cached_news()
+        if cached is not None:
+            logger.info(f"Returning cached news ({len(cached)} articles)")
+            return cached
+        
+        try:
+            # Import feedparser for RSS scraping
+            import feedparser
+            
+            # RSS feeds to scrape - same as github_digest_runner.py
+            rss_feeds = [
+                {
+                    'name': 'Real Estate India',
+                    'url': 'https://news.google.com/rss/search?q=indian+real+estate+property&hl=en-IN&gl=IN&ceid=IN:en'
+                },
+                {
+                    'name': 'Property Prices',
+                    'url': 'https://news.google.com/rss/search?q=india+property+prices+housing+market&hl=en-IN&gl=IN&ceid=IN:en'
+                },
+                {
+                    'name': 'Home Loan',
+                    'url': 'https://news.google.com/rss/search?q=home+loan+interest+rate+EMI&hl=en-IN&gl=IN&ceid=IN:en'
+                },
+                {
+                    'name': 'Infrastructure',
+                    'url': 'https://news.google.com/rss/search?q=india+infrastructure+metro+highway+smart+city&hl=en-IN&gl=IN&ceid=IN:en'
+                }
+            ]
+            
+            # Real estate keywords for filtering
+            REAL_ESTATE_KEYWORDS = [
+                'real estate', 'property', 'housing', 'home loan', 'affordable housing',
+                'pmay', 'pradhan mantri awas', 'rera', 'stamp duty', 'builder', 'developer',
+                'residential', 'commercial property', 'realty', 'home buyer', 'rental',
+                'apartment', 'flat', 'plot', 'land', 'construction', 'infrastructure',
+                'metro', 'highway', 'airport', 'smart city', 'dlf', 'godrej properties',
+                'home loan rate', 'emi', 'mortgage', 'housing finance', 'property prices',
+            ]
+            
+            all_articles = []
+            
+            for feed_config in rss_feeds:
+                try:
+                    feed = feedparser.parse(feed_config['url'])
+                    
+                    for entry in feed.entries[:5]:  # Limit to 5 per feed
+                        # Generate unique ID
+                        id_source = entry.get('link', '') or entry.get('title', '')
+                        article_id = hashlib.md5(id_source.encode()).hexdigest()
+                        
+                        article = {
+                            'id': article_id,
+                            'title': entry.get('title', 'No title'),
+                            'url': entry.get('link', ''),
+                            'source': feed_config['name'],
+                            'content': entry.get('summary', entry.get('description', '')),
+                            'published_at': entry.get('published', ''),
+                            'category': 'general'
+                        }
+                        all_articles.append(article)
+                        
+                except Exception as e:
+                    logger.error(f"Error fetching {feed_config['name']}: {e}")
+            
+            # Filter and categorize articles
+            processed = []
+            seen_titles = set()
+            
+            for article in all_articles:
+                title_lower = article.get('title', '').lower()
+                content_lower = article.get('content', '').lower()
+                text = title_lower + ' ' + content_lower
+                
+                # Skip if already seen
+                title_key = article.get('title', '').lower()[:50]
+                if title_key in seen_titles:
+                    continue
+                seen_titles.add(title_key)
+                
+                # Must have at least one real estate keyword
+                has_real_estate = any(kw in text for kw in REAL_ESTATE_KEYWORDS)
+                if not has_real_estate:
+                    continue
+                
+                # Categorize
+                if any(kw in text for kw in ['rera', 'regulation', 'policy', 'government', 'pmay']):
+                    article['category'] = 'policy'
+                elif any(kw in text for kw in ['price', 'rate', 'market', 'demand', 'sales']):
+                    article['category'] = 'market_updates'
+                elif any(kw in text for kw in ['metro', 'infrastructure', 'airport', 'highway']):
+                    article['category'] = 'infrastructure'
+                elif any(kw in text for kw in ['launch', 'new project', 'upcoming']):
+                    article['category'] = 'launches'
+                elif any(kw in text for kw in ['loan', 'emi', 'interest', 'rbi', 'mortgage']):
+                    article['category'] = 'finance'
+                
+                processed.append(article)
+            
+            # Cache the results
+            self._set_news_cache(processed)
+            
+            logger.info(f"Fetched {len(processed)} news articles on demand")
+            return processed
+            
+        except Exception as e:
+            logger.error(f"Error fetching on-demand news: {e}")
+            return []
+    
+    def _format_news_message(self, articles: List[Dict[str, Any]]) -> str:
+        """
+        Format news articles for Telegram
+        
+        Args:
+            articles: List of news articles
+            
+        Returns:
+            Formatted message string
+        """
+        import html
+        
+        now = datetime.now()
+        date_str = now.strftime('%B %d, %Y')
+        time_str = now.strftime('%I:%M %p')
+        
+        lines = [
+            f"<b>📰 Latest Real Estate News</b>",
+            f"📅 {date_str} | ⏰ {time_str}",
+            f"📊 {len(articles)} articles",
+            "",
+            "━━━━━━━━━━━━━━━━━━━━"
+        ]
+        
+        if not articles:
+            lines.append("")
+            lines.append("No new articles found at the moment.")
+            lines.append("Try again in a few minutes!")
+        else:
+            # Group by category
+            categories = {}
+            for article in articles[:15]:  # Max 15 articles
+                cat = article.get('category', 'general')
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(article)
+            
+            for category, cat_articles in categories.items():
+                lines.append("")
+                lines.append(f"📁 <b>{category.upper().replace('_', ' ')}</b>")
+                
+                for article in cat_articles[:3]:  # Max 3 per category
+                    title = html.escape(article.get('title', 'No title')[:70])
+                    url = html.escape(article.get('url', ''), quote=True)
+                    source = html.escape(article.get('source', 'Unknown').replace('Google News - ', ''))
+                    
+                    lines.append(f"")
+                    if url:
+                        lines.append(f"• <a href='{url}'>{title}</a>")
+                    else:
+                        lines.append(f"• {title}")
+                    lines.append(f"  📰 {source}")
+        
+        lines.append("")
+        lines.append("━━━━━━━━━━━━━━━━━━━━")
+        lines.append("🤖 <i>On-demand news via Khabri Bot</i>")
+        lines.append(f"⏱️ <i>Rate limit: 1 request per {_NEWS_RATE_LIMIT_MINUTES} minutes</i>")
+        
+        return "\n".join(lines)
+    
+    async def handle_news_command(self, chat_id: str) -> bool:
+        """
+        Handle /news command or news keyword - send on-demand news
+        
+        Args:
+            chat_id: Chat ID to send news to
+            
+        Returns:
+            True if successful
+        """
+        logger.info(f"Handling news request from chat_id: {chat_id}")
+        
+        # Check rate limit
+        is_allowed, seconds_remaining = self._check_rate_limit(chat_id)
+        
+        if not is_allowed:
+            minutes = seconds_remaining // 60
+            seconds = seconds_remaining % 60
+            
+            self.send_message(
+                chat_id,
+                f"⏱️ <b>Rate Limited</b>\n\n"
+                f"Please wait <b>{minutes}m {seconds}s</b> before requesting news again.\n\n"
+                f"This prevents spam and ensures fair usage. 💙",
+                parse_mode='HTML'
+            )
+            return False
+        
+        # Send "typing" indicator
+        self._send_chat_action(chat_id, 'typing')
+        
+        # Acknowledge the request
+        self.send_message(
+            chat_id,
+            "🔍 <b>Fetching latest real estate news...</b>\n"
+            "This will take a few seconds ⏳",
+            parse_mode='HTML'
+        )
+        
+        try:
+            # Fetch news
+            articles = await self._fetch_news_on_demand()
+            
+            # Update rate limit timestamp
+            self._news_last_request[chat_id] = datetime.now()
+            
+            # Format and send
+            message = self._format_news_message(articles)
+            
+            # Send with retry
+            success = self.send_message(chat_id, message, parse_mode='HTML')
+            
+            if success:
+                logger.info(f"Sent on-demand news to {chat_id} ({len(articles)} articles)")
+            else:
+                logger.error(f"Failed to send news to {chat_id}")
+                # Try sending shorter message
+                short_msg = f"📰 <b>News Update</b>\n\nFound {len(articles)} articles.\n\n(Some articles may have been too long to display)"
+                self.send_message(chat_id, short_msg, parse_mode='HTML')
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error in handle_news_command: {e}", exc_info=True)
+            self.send_message(
+                chat_id,
+                "❌ <b>Sorry, couldn't fetch news right now.</b>\n\n"
+                "Please try again in a few minutes.",
+                parse_mode='HTML'
+            )
+            return False
+    
+    def _send_chat_action(self, chat_id: str, action: str) -> bool:
+        """
+        Send chat action (typing, uploading_photo, etc.)
+        
+        Args:
+            chat_id: Chat ID
+            action: Action type (typing, uploading_photo, etc.)
+            
+        Returns:
+            True if successful
+        """
+        if not self.bot_token:
+            return False
+        
+        url = f"{self.api_url}/sendChatAction"
+        payload = {
+            'chat_id': chat_id,
+            'action': action
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=5)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+
     def process_message(self, message: Dict[str, Any]) -> bool:
         """
         Process a single message
@@ -877,11 +1261,19 @@ Would you like me to proceed with this change?"""
             return self.handle_undo_command(chat_id)
         elif text.startswith('/help') or text.startswith('/start'):
             return self.handle_help_command(chat_id)
+        elif text.startswith('/news'):
+            # Handle /news command
+            return asyncio.run(self.handle_news_command(chat_id))
         else:
             # Check for natural language undo
             if any(phrase in text.lower() for phrase in ['undo', 'rollback', 'revert', 'restore']):
                 if any(phrase in text.lower() for phrase in ['last', 'previous', 'recent']):
                     return self.handle_undo_command(chat_id)
+            
+            # Check for news keyword trigger
+            if self._is_news_trigger(text):
+                logger.info(f"News trigger detected from {chat_id}: '{text}'")
+                return asyncio.run(self.handle_news_command(chat_id))
 
             # Try Smart Intent Parsing for non-command messages
             if SMART_INTENT_AVAILABLE and parse_intent and len(text) > 5:
@@ -897,13 +1289,15 @@ Would you like me to proceed with this change?"""
             self.send_message(
                 chat_id,
                 "❓ I didn't understand that.\n\n"
-                "You can:\n"
-                "• Use `/fix <description>` for detailed fixes\n"
-                "• Try natural language like:\n"
-                "  - `add automotive companies like Mahindra`\n"
-                "  - `change morning time to 8 AM`\n"
-                "  - `show all bollywood celebrities`\n\n"
-                "Or use `/help` for more options."
+                "<b>Quick Commands:</b>\n"
+                "• Type <code>news</code> for latest real estate news 📰\n"
+                "• Use <code>/fix &lt;description&gt;</code> for detailed fixes\n\n"
+                "<b>Smart Commands:</b>\n"
+                "• <code>add automotive companies like Mahindra</code>\n"
+                "• <code>change morning time to 8 AM</code>\n"
+                "• <code>show all bollywood celebrities</code>\n\n"
+                "Or use <code>/help</code> for more options.",
+                parse_mode='HTML'
             )
             return False
 
