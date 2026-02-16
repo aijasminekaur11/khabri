@@ -967,34 +967,66 @@ Would you like me to proceed with this change?"""
             # Import feedparser for RSS scraping
             import feedparser
             
-            # RSS feeds to scrape - same as github_digest_runner.py
+            # RSS feeds to scrape - Focus on INFRASTRUCTURE & METRO projects
+            # Based on user's requirement for news like:
+            # - Noida Metro expansion (Aqua Line extension)
+            # - Pune Metro Phase 2 (Line 4B and 4C)  
+            # - Meerut Metro (Namo Bharat corridor)
             rss_feeds = [
                 {
-                    'name': 'Real Estate India',
-                    'url': 'https://news.google.com/rss/search?q=indian+real+estate+property&hl=en-IN&gl=IN&ceid=IN:en'
+                    'name': '🚇 Metro Projects',
+                    'url': 'https://news.google.com/rss/search?q=india+metro+expansion+line+extension+stations&hl=en-IN&gl=IN&ceid=IN:en'
                 },
                 {
-                    'name': 'Property Prices',
-                    'url': 'https://news.google.com/rss/search?q=india+property+prices+housing+market&hl=en-IN&gl=IN&ceid=IN:en'
+                    'name': '🏗️ Infrastructure TOI',
+                    'url': 'https://news.google.com/rss/search?q=site:timesofindia.indiatimes.com+infrastructure+metro+highway+cabinet+approval&hl=en-IN&gl=IN&ceid=IN:en'
                 },
                 {
-                    'name': 'Home Loan',
-                    'url': 'https://news.google.com/rss/search?q=home+loan+interest+rate+EMI&hl=en-IN&gl=IN&ceid=IN:en'
+                    'name': '🚉 Urban Transport',
+                    'url': 'https://news.google.com/rss/search?q=india+urban+transport+metro+rapid+rail+namo+bharat&hl=en-IN&gl=IN&ceid=IN:en'
                 },
                 {
-                    'name': 'Infrastructure',
-                    'url': 'https://news.google.com/rss/search?q=india+infrastructure+metro+highway+smart+city&hl=en-IN&gl=IN&ceid=IN:en'
+                    'name': '🏛️ Government Projects',
+                    'url': 'https://news.google.com/rss/search?q=india+inaugurated+cabinet+approves+new+stations+infrastructure&hl=en-IN&gl=IN&ceid=IN:en'
+                },
+                {
+                    'name': '📍 Regional Metro News',
+                    'url': 'https://news.google.com/rss/search?q=delhi+metro+noida+metro+gurugram+metro+pune+metro+mumbai+metro&hl=en-IN&gl=IN&ceid=IN:en'
+                },
+                {
+                    'name': '🛣️ Highways & Corridors',
+                    'url': 'https://news.google.com/rss/search?q=india+highway+corridor+expressway+phase+2+3+extension&hl=en-IN&gl=IN&ceid=IN:en'
                 }
             ]
             
-            # Real estate keywords for filtering
-            REAL_ESTATE_KEYWORDS = [
-                'real estate', 'property', 'housing', 'home loan', 'affordable housing',
-                'pmay', 'pradhan mantri awas', 'rera', 'stamp duty', 'builder', 'developer',
-                'residential', 'commercial property', 'realty', 'home buyer', 'rental',
-                'apartment', 'flat', 'plot', 'land', 'construction', 'infrastructure',
-                'metro', 'highway', 'airport', 'smart city', 'dlf', 'godrej properties',
-                'home loan rate', 'emi', 'mortgage', 'housing finance', 'property prices',
+            # Infrastructure & Metro keywords for filtering
+            # Focus on specific project types mentioned in user's examples
+            INFRASTRUCTURE_KEYWORDS = [
+                # Metro/Urban Transport
+                'metro', 'metro expansion', 'metro line', 'line extension', 'new stations',
+                'aqua line', 'blue line', 'green line', 'red line', 'yellow line', 'violet line',
+                'phase 2', 'phase 3', 'phase 4', 'phase 2b', 'phase 4a', 'phase 4b', 'phase 4c',
+                'rapid rail', 'namo bharat', 'rrts', 'urban transport',
+                'noida metro', 'delhi metro', 'mumbai metro', 'pune metro', 'bangalore metro',
+                'hyderabad metro', 'chennai metro', 'kolkata metro', 'meerut metro',
+                'gurugram metro', 'faridabad metro', 'ghaziabad metro',
+                
+                # Highways & Roads
+                'highway', 'expressway', 'corridor', 'eastern peripheral', 'western peripheral',
+                'dwarka expressway', 'mumbai-pune expressway', 'delhi-mumbai expressway',
+                
+                # Government Actions
+                'cabinet okays', 'cabinet approves', 'inaugurated', 'foundation stone',
+                'tender invited', 'bids invited', 'contract awarded', 'construction begins',
+                'trial run', 'commercial operation', 'partial opening',
+                
+                # Infrastructure
+                'infrastructure', 'smart city', 'airport', 'new terminal', 'runway',
+                'bridge', 'tunnel', 'flyover', 'underpass', 'elevated road',
+                
+                # Specific Projects
+                'jewar airport', 'navi mumbai airport', 'pune metro', 'noida metro',
+                'meerut metro', 'bangalore suburban rail', 'mumbai suburban',
             ]
             
             all_articles = []
@@ -1037,22 +1069,26 @@ Would you like me to proceed with this change?"""
                     continue
                 seen_titles.add(title_key)
                 
-                # Must have at least one real estate keyword
-                has_real_estate = any(kw in text for kw in REAL_ESTATE_KEYWORDS)
-                if not has_real_estate:
+                # Must have at least one infrastructure keyword
+                has_infrastructure = any(kw in text for kw in INFRASTRUCTURE_KEYWORDS)
+                if not has_infrastructure:
                     continue
                 
-                # Categorize
-                if any(kw in text for kw in ['rera', 'regulation', 'policy', 'government', 'pmay']):
-                    article['category'] = 'policy'
-                elif any(kw in text for kw in ['price', 'rate', 'market', 'demand', 'sales']):
-                    article['category'] = 'market_updates'
-                elif any(kw in text for kw in ['metro', 'infrastructure', 'airport', 'highway']):
+                # Categorize based on infrastructure project types
+                if any(kw in text for kw in ['metro', 'line extension', 'new stations', 'aqua line', 'rapid rail', 'rrts', 'namo bharat']):
+                    article['category'] = 'metro_projects'
+                elif any(kw in text for kw in ['highway', 'expressway', 'corridor', 'eastern peripheral', 'western peripheral']):
+                    article['category'] = 'highways'
+                elif any(kw in text for kw in ['airport', 'terminal', 'runway', 'jewar', 'navi mumbai airport']):
+                    article['category'] = 'airports'
+                elif any(kw in text for kw in ['cabinet okays', 'cabinet approves', 'inaugurated', 'foundation stone', 'tender', 'bids invited']):
+                    article['category'] = 'government_updates'
+                elif any(kw in text for kw in ['bridge', 'tunnel', 'flyover', 'underpass']):
+                    article['category'] = 'civil_infrastructure'
+                elif any(kw in text for kw in ['smart city', 'urban development', 'city infrastructure']):
+                    article['category'] = 'smart_cities'
+                else:
                     article['category'] = 'infrastructure'
-                elif any(kw in text for kw in ['launch', 'new project', 'upcoming']):
-                    article['category'] = 'launches'
-                elif any(kw in text for kw in ['loan', 'emi', 'interest', 'rbi', 'mortgage']):
-                    article['category'] = 'finance'
                 
                 processed.append(article)
             
@@ -1068,7 +1104,7 @@ Would you like me to proceed with this change?"""
     
     def _format_news_message(self, articles: List[Dict[str, Any]]) -> str:
         """
-        Format news articles for Telegram
+        Format news articles for Telegram - INFRASTRUCTURE FOCUS
         
         Args:
             articles: List of news articles
@@ -1082,8 +1118,20 @@ Would you like me to proceed with this change?"""
         date_str = now.strftime('%B %d, %Y')
         time_str = now.strftime('%I:%M %p')
         
+        # Category emoji mapping for infrastructure news
+        category_emojis = {
+            'metro_projects': '🚇 METRO PROJECTS',
+            'highways': '🛣️ HIGHWAYS & EXPRESSWAYS',
+            'airports': '✈️ AIRPORTS',
+            'government_updates': '🏛️ GOVERNMENT UPDATES',
+            'civil_infrastructure': '🌉 BRIDGES & TUNNELS',
+            'smart_cities': '🏙️ SMART CITIES',
+            'infrastructure': '🏗️ INFRASTRUCTURE',
+            'general': '📰 GENERAL'
+        }
+        
         lines = [
-            f"<b>📰 Latest Real Estate News</b>",
+            f"<b>🚇 Latest Infrastructure & Metro News</b>",
             f"📅 {date_str} | ⏰ {time_str}",
             f"📊 {len(articles)} articles",
             "",
@@ -1092,36 +1140,47 @@ Would you like me to proceed with this change?"""
         
         if not articles:
             lines.append("")
-            lines.append("No new articles found at the moment.")
+            lines.append("No new infrastructure articles found at the moment.")
             lines.append("Try again in a few minutes!")
         else:
             # Group by category
             categories = {}
-            for article in articles[:15]:  # Max 15 articles
+            for article in articles[:20]:  # Max 20 articles
                 cat = article.get('category', 'general')
                 if cat not in categories:
                     categories[cat] = []
                 categories[cat].append(article)
             
-            for category, cat_articles in categories.items():
+            # Sort categories by priority
+            priority_order = ['metro_projects', 'highways', 'airports', 'government_updates', 
+                             'civil_infrastructure', 'smart_cities', 'infrastructure', 'general']
+            sorted_categories = sorted(categories.items(), 
+                                      key=lambda x: priority_order.index(x[0]) if x[0] in priority_order else 999)
+            
+            for category, cat_articles in sorted_categories:
                 lines.append("")
-                lines.append(f"📁 <b>{category.upper().replace('_', ' ')}</b>")
+                # Use emoji mapping or default formatting
+                cat_display = category_emojis.get(category, f"📁 {category.upper().replace('_', ' ')}")
+                lines.append(f"<b>{cat_display}</b>")
                 
-                for article in cat_articles[:3]:  # Max 3 per category
-                    title = html.escape(article.get('title', 'No title')[:70])
+                for article in cat_articles[:4]:  # Max 4 per category
+                    title = html.escape(article.get('title', 'No title')[:80])
                     url = html.escape(article.get('url', ''), quote=True)
-                    source = html.escape(article.get('source', 'Unknown').replace('Google News - ', ''))
+                    source = article.get('source', 'Unknown').replace('Google News - ', '')
                     
                     lines.append(f"")
                     if url:
                         lines.append(f"• <a href='{url}'>{title}</a>")
                     else:
                         lines.append(f"• {title}")
-                    lines.append(f"  📰 {source}")
+                    
+                    # Show source only if it's informative
+                    if source and not source.startswith('http'):
+                        lines.append(f"  <i>{html.escape(source)}</i>")
         
         lines.append("")
         lines.append("━━━━━━━━━━━━━━━━━━━━")
-        lines.append("🤖 <i>On-demand news via Khabri Bot</i>")
+        lines.append("🤖 <i>On-demand infra news via Khabri Bot</i>")
         lines.append(f"⏱️ <i>Rate limit: 1 request per {_NEWS_RATE_LIMIT_MINUTES} minutes</i>")
         
         return "\n".join(lines)
@@ -1160,8 +1219,8 @@ Would you like me to proceed with this change?"""
         # Acknowledge the request
         self.send_message(
             chat_id,
-            "🔍 <b>Fetching latest real estate news...</b>\n"
-            "This will take a few seconds ⏳",
+            "🚇 <b>Fetching latest infrastructure & metro news...</b>\n"
+            "Metro projects | Highways | Airports | Govt updates ⏳",
             parse_mode='HTML'
         )
         
