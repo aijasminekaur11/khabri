@@ -529,10 +529,11 @@ Please review manually: {issue_url}
 
 **Quick Actions:**
 
-📰 Type `news` or `/news` - Get latest real estate news instantly
-   • Fetches fresh news from multiple sources
+📰 Type `news` or `/news` - Get infrastructure & metro news
+   • 🚇 Metro Projects | 🛣️ Highways | ✈️ Airports | 🏛️ Govt Updates
+   • 📱 Sends to ALL your Telegram chats
+   • 📧 Also sends to your Email
    • Rate limit: 1 request per 5 minutes
-   • Includes: Property, Infrastructure, Policy, Finance news
 
 **Available Commands:**
 
@@ -1185,12 +1186,211 @@ Would you like me to proceed with this change?"""
         
         return "\n".join(lines)
     
+    def _format_news_email_html(self, articles: List[Dict[str, Any]], requested_by: str = "Telegram User") -> str:
+        """
+        Format news articles as HTML email
+        
+        Args:
+            articles: List of news articles
+            requested_by: Who requested the news
+            
+        Returns:
+            HTML formatted email body
+        """
+        import html
+        
+        now = datetime.now()
+        date_str = now.strftime('%B %d, %Y')
+        time_str = now.strftime('%I:%M %p')
+        
+        category_emojis = {
+            'metro_projects': '🚇 METRO PROJECTS',
+            'highways': '🛣️ HIGHWAYS & EXPRESSWAYS',
+            'airports': '✈️ AIRPORTS',
+            'government_updates': '🏛️ GOVERNMENT UPDATES',
+            'civil_infrastructure': '🌉 BRIDGES & TUNNELS',
+            'smart_cities': '🏙️ SMART CITIES',
+            'infrastructure': '🏗️ INFRASTRUCTURE',
+            'general': '📰 GENERAL'
+        }
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
+                .container {{ background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }}
+                .meta {{ color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }}
+                .category {{ background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 10px 20px; margin: 25px 0 15px 0; border-radius: 5px; font-weight: bold; font-size: 16px; }}
+                .article {{ background: #f9f9f9; padding: 20px; margin: 15px 0; border-left: 4px solid #3498db; border-radius: 0 5px 5px 0; }}
+                .article h3 {{ margin: 0 0 10px 0; color: #2c3e50; font-size: 16px; }}
+                .article .source {{ color: #7f8c8d; font-size: 12px; margin-top: 10px; }}
+                .article a {{ color: #3498db; text-decoration: none; }}
+                .article a:hover {{ text-decoration: underline; }}
+                .footer {{ text-align: center; color: #95a5a6; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }}
+                .empty {{ text-align: center; padding: 40px; color: #95a5a6; }}
+                .header-icon {{ font-size: 40px; margin-bottom: 10px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header-icon">🚇</div>
+                <h1>On-Demand Infrastructure News</h1>
+                <div class="meta">
+                    📅 {date_str} | ⏰ {time_str}<br>
+                    📊 {len(articles)} articles<br>
+                    👤 Requested by: {html.escape(requested_by)}
+                </div>
+        """
+        
+        if not articles:
+            html_content += '<div class="empty"><p>No new infrastructure articles found at the moment.</p><p>Try again in a few minutes!</p></div>'
+        else:
+            # Group by category
+            categories = {}
+            for article in articles[:20]:
+                cat = article.get('category', 'general')
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(article)
+            
+            # Sort categories by priority
+            priority_order = ['metro_projects', 'highways', 'airports', 'government_updates', 
+                             'civil_infrastructure', 'smart_cities', 'infrastructure', 'general']
+            sorted_categories = sorted(categories.items(), 
+                                      key=lambda x: priority_order.index(x[0]) if x[0] in priority_order else 999)
+            
+            for category, cat_articles in sorted_categories:
+                cat_display = category_emojis.get(category, category.upper().replace('_', ' '))
+                html_content += f'<div class="category">{cat_display}</div>'
+                
+                for article in cat_articles[:4]:
+                    title = html.escape(article.get('title', 'No title'))
+                    url = article.get('url', '')
+                    source = html.escape(article.get('source', 'Unknown'))
+                    
+                    html_content += f'''
+                    <div class="article">
+                        <h3>{f'<a href="{url}">{title}</a>' if url else title}</h3>
+                        <div class="source">📰 {source}</div>
+                    </div>
+                    '''
+        
+        html_content += """
+            <div class="footer">
+                🤖 Powered by <strong>Khabri News Intelligence</strong><br>
+                ⚡ Auto-delivered via Telegram Bot<br>
+                📧 Also sent to your email for convenience
+            </div>
+        </div>
+        </body>
+        </html>
+        """
+        
+        return html_content
+    
+    async def _send_news_email(self, articles: List[Dict[str, Any]], requested_by: str = "Telegram User") -> bool:
+        """
+        Send news via email
+        
+        Args:
+            articles: List of news articles
+            requested_by: Who requested the news
+            
+        Returns:
+            True if successful
+        """
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        # Get email credentials from environment
+        smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+        raw_port = os.getenv('SMTP_PORT')
+        try:
+            smtp_port = int(raw_port) if raw_port else 587
+        except ValueError:
+            smtp_port = 587
+        
+        username = os.getenv('SMTP_USERNAME')
+        password = os.getenv('SMTP_PASSWORD')
+        sender = os.getenv('SMTP_USERNAME')
+        recipient = os.getenv('EMAIL_RECIPIENT')
+        
+        if not all([username, password, recipient]):
+            logger.warning("Email not configured - skipping email notification")
+            return False
+        
+        try:
+            # Format email
+            now = datetime.now()
+            subject = f"🚇 On-Demand Infrastructure News - {now.strftime('%B %d, %Y')}"
+            body_html = self._format_news_email_html(articles, requested_by)
+            
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = sender
+            msg['To'] = recipient
+            
+            html_part = MIMEText(body_html, 'html')
+            msg.attach(html_part)
+            
+            # Send via SMTP
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+                server.starttls()
+                server.login(username, password)
+                recipients = [addr.strip() for addr in recipient.split(',') if addr.strip()]
+                server.sendmail(sender, recipients, msg.as_string())
+            
+            logger.info(f"News email sent to {recipient}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send news email: {e}")
+            return False
+    
+    def _get_all_telegram_chat_ids(self) -> List[str]:
+        """
+        Get all Telegram chat IDs to send news to
+        Returns primary chat ID and any additional configured IDs
+        
+        Returns:
+            List of chat IDs
+        """
+        chat_ids = []
+        
+        # Primary chat ID from authorized list
+        if self.authorized_chat_ids:
+            chat_ids.extend(list(self.authorized_chat_ids))
+        
+        # Also check for additional comma-separated chat IDs
+        additional_ids = os.getenv('TELEGRAM_ADDITIONAL_CHAT_IDS', '')
+        if additional_ids:
+            for cid in additional_ids.split(','):
+                cid = cid.strip()
+                if cid and cid not in chat_ids:
+                    chat_ids.append(cid)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_ids = []
+        for cid in chat_ids:
+            if cid not in seen:
+                seen.add(cid)
+                unique_ids.append(cid)
+        
+        return unique_ids
+    
     async def handle_news_command(self, chat_id: str) -> bool:
         """
         Handle /news command or news keyword - send on-demand news
+        Sends to: Telegram (requester + all configured IDs) + Email
         
         Args:
-            chat_id: Chat ID to send news to
+            chat_id: Chat ID that sent the command
             
         Returns:
             True if successful
@@ -1220,7 +1420,7 @@ Would you like me to proceed with this change?"""
         self.send_message(
             chat_id,
             "🚇 <b>Fetching latest infrastructure & metro news...</b>\n"
-            "Metro projects | Highways | Airports | Govt updates ⏳",
+            "Sending to Telegram + Email ⏳",
             parse_mode='HTML'
         )
         
@@ -1231,21 +1431,38 @@ Would you like me to proceed with this change?"""
             # Update rate limit timestamp
             self._news_last_request[chat_id] = datetime.now()
             
-            # Format and send
-            message = self._format_news_message(articles)
+            # Format messages
+            telegram_msg = self._format_news_message(articles)
             
-            # Send with retry
-            success = self.send_message(chat_id, message, parse_mode='HTML')
+            # Send to all Telegram chat IDs
+            all_chat_ids = self._get_all_telegram_chat_ids()
+            telegram_success_count = 0
             
-            if success:
-                logger.info(f"Sent on-demand news to {chat_id} ({len(articles)} articles)")
-            else:
-                logger.error(f"Failed to send news to {chat_id}")
-                # Try sending shorter message
-                short_msg = f"📰 <b>News Update</b>\n\nFound {len(articles)} articles.\n\n(Some articles may have been too long to display)"
-                self.send_message(chat_id, short_msg, parse_mode='HTML')
+            for target_chat_id in all_chat_ids:
+                try:
+                    success = self.send_message(target_chat_id, telegram_msg, parse_mode='HTML')
+                    if success:
+                        telegram_success_count += 1
+                        logger.info(f"Sent news to Telegram chat {target_chat_id}")
+                    else:
+                        logger.error(f"Failed to send news to Telegram chat {target_chat_id}")
+                except Exception as e:
+                    logger.error(f"Error sending to Telegram chat {target_chat_id}: {e}")
             
-            return success
+            # Send Email
+            email_success = await self._send_news_email(articles, requested_by=f"Telegram User ({chat_id})")
+            
+            # Confirm to requester
+            success_summary = f"✅ <b>News delivered!</b>\n\n"
+            success_summary += f"📱 Telegram: {telegram_success_count} chat(s)\n"
+            success_summary += f"📧 Email: {'Sent' if email_success else 'Failed/Not configured'}\n"
+            success_summary += f"📊 Articles: {len(articles)}\n\n"
+            success_summary += "Check your email and Telegram for the full news update."
+            
+            self.send_message(chat_id, success_summary, parse_mode='HTML')
+            
+            logger.info(f"News request completed. Telegram: {telegram_success_count}, Email: {email_success}")
+            return telegram_success_count > 0
             
         except Exception as e:
             logger.error(f"Error in handle_news_command: {e}", exc_info=True)
