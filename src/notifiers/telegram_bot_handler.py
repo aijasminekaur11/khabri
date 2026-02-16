@@ -1307,21 +1307,35 @@ Would you like me to proceed with this change?"""
         from email.mime.multipart import MIMEMultipart
         
         # Get email credentials from environment
-        smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-        raw_port = os.getenv('SMTP_PORT')
+        # Support both naming conventions used in the project
+        smtp_host = os.getenv('EMAIL_SMTP_HOST') or os.getenv('SMTP_HOST', 'smtp.gmail.com')
+        raw_port = os.getenv('EMAIL_SMTP_PORT') or os.getenv('SMTP_PORT')
         try:
             smtp_port = int(raw_port) if raw_port else 587
         except ValueError:
             smtp_port = 587
         
-        username = os.getenv('SMTP_USERNAME')
-        password = os.getenv('SMTP_PASSWORD')
-        sender = os.getenv('SMTP_USERNAME')
-        recipient = os.getenv('EMAIL_RECIPIENT')
+        # Try multiple env var names for email credentials
+        username = (os.getenv('EMAIL_USERNAME') or 
+                   os.getenv('SMTP_USERNAME') or 
+                   os.getenv('GMAIL_ADDRESS'))
+        
+        password = (os.getenv('EMAIL_PASSWORD') or 
+                   os.getenv('SMTP_PASSWORD') or 
+                   os.getenv('GMAIL_APP_PASSWORD'))
+        
+        sender = username  # Use username as sender
+        
+        recipient = (os.getenv('EMAIL_TO') or 
+                    os.getenv('EMAIL_RECIPIENT') or 
+                    os.getenv('RECIPIENT_EMAIL'))
         
         if not all([username, password, recipient]):
             logger.warning("Email not configured - skipping email notification")
+            logger.debug(f"Email config - username: {username is not None}, password: {password is not None}, recipient: {recipient is not None}")
             return False
+        
+        logger.info(f"Sending email to {recipient} via {smtp_host}:{smtp_port}")
         
         try:
             # Format email
