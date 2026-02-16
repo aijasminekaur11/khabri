@@ -1,0 +1,129 @@
+# =============================================================================
+# Morning News Digest - Separate Workflow
+# This avoids timing conflicts with evening digest
+# =============================================================================
+
+name: 🌅 Morning News Digest
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  schedule:
+    # Morning Digest - 7:00 AM IST (UTC+5:30) = 1:30 AM UTC
+    # Using 1:20 AM to avoid the :30 minute congestion
+    - cron: '20 1 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+  TZ: 'Asia/Kolkata'
+
+jobs:
+  send-morning-digest:
+    name: 🌅 Send Morning Digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 📂 Restore sent articles cache
+        uses: actions/cache@v4
+        with:
+          path: .khabri_cache
+          key: khabri-morning-sent-${{ github.ref }}
+          restore-keys: |
+            khabri-morning-sent-
+
+      - name: 🕐 Log timing info
+        run: |
+          echo "Scheduled time: 1:20 AM UTC (6:50 AM IST)"
+          echo "Actual run time (UTC): $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "Actual run time (IST): $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S')"
+          
+          # Calculate delay
+          SCHEDULED_MINUTES=$((1*60 + 20))  # 1:20 AM = 80 minutes
+          CURRENT_HOUR=$(date -u +%H)
+          CURRENT_MIN=$(date -u +%M)
+          CURRENT_MINUTES=$((10#$CURRENT_HOUR * 60 + 10#$CURRENT_MIN))
+          
+          if [ $CURRENT_MINUTES -gt $SCHEDULED_MINUTES ]; then
+            DELAY=$((CURRENT_MINUTES - SCHEDULED_MINUTES))
+            echo "⏱️ Delay: ${DELAY} minutes"
+            if [ $DELAY -gt 60 ]; then
+              echo "⚠️ WARNING: Significant delay detected (${DELAY} minutes)"
+            fi
+          fi
+
+      - name: 📰 Run News Scraper
+        run: |
+          echo "Starting morning news scraper..."
+          python scripts/github_digest_runner.py scrape
+        env:
+          DIGEST_TYPE: morning
+
+      - name: 🔄 Process Articles
+        run: |
+          echo "Processing morning articles..."
+          python scripts/github_digest_runner.py process
+        env:
+          DIGEST_TYPE: morning
+
+      - name: 📱 Send Telegram Notification
+        if: success()
+        run: |
+          echo "Sending morning Telegram notification..."
+          python scripts/github_digest_runner.py notify telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DIGEST_TYPE: morning
+
+      - name: 📧 Send Email Notification
+        if: success()
+        run: |
+          echo "Sending morning email notification..."
+          python scripts/github_digest_runner.py notify email
+        env:
+          SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_TO }}
+          DIGEST_TYPE: morning
+
+      - name: 💾 Save sent articles cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .khabri_cache
+          key: khabri-morning-sent-${{ github.ref }}-${{ github.run_id }}
+
+      - name: 📊 Log Results
+        if: always()
+        run: |
+          echo "## 🌅 Morning Digest Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Digest Type | Morning |" >> $GITHUB_STEP_SUMMARY
+          echo "| Scheduled Time (IST) | 6:50 AM |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Time (IST) | 7:00 AM |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actual Run Time (IST) | $(TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
