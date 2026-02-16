@@ -1075,8 +1075,61 @@ Would you like me to proceed with this change?"""
                 if not has_infrastructure:
                     continue
                 
-                # Categorize based on infrastructure project types
-                if any(kw in text for kw in ['metro', 'line extension', 'new stations', 'aqua line', 'rapid rail', 'rrts', 'namo bharat']):
+                # IMPACT SCORING SYSTEM
+                # Calculate impact score based on keywords
+                impact_score = 0
+                
+                # HIGH IMPACT keywords (major announcements, inaugurations, cabinet approvals)
+                HIGH_IMPACT_KEYWORDS = [
+                    'cabinet okays', 'cabinet approves', 'cabinet clears',
+                    'inaugurated', 'prime minister inaugurates', 'pm inaugurates',
+                    'foundation stone', 'foundation laid',
+                    'green signal', 'approved', 'sanctioned',
+                    'rs crore', 'thousand crore', 'billion', 'mega project',
+                    'major breakthrough', 'landmark', 'historic',
+                ]
+                
+                # MEDIUM IMPACT keywords (tenders, contracts, construction progress)
+                MEDIUM_IMPACT_KEYWORDS = [
+                    'tender invited', 'bids invited', 'tender floated',
+                    'contract awarded', 'contract signed', 'l&t', 'lt', 'tata', 'reliance',
+                    'construction begins', 'work begins', 'construction underway',
+                    'trial run', 'test run', 'commissioning',
+                    'phase complete', 'stretch opens', 'section opens',
+                    'deadline extended', 'cost escalation',
+                ]
+                
+                # SMART NEWS keywords (technology, innovation, sustainability)
+                SMART_NEWS_KEYWORDS = [
+                    'smart city', 'smart metro', 'ai-powered', 'autonomous',
+                    'solar', 'green energy', 'renewable', 'zero emission',
+                    'wifi', 'digital', 'app', 'mobile ticketing',
+                    'waterproof', 'anti-corrosion', 'modern technology',
+                    'cctv', 'surveillance', 'automatic', 'driverless',
+                ]
+                
+                # Calculate score
+                high_impact_matches = sum(1 for kw in HIGH_IMPACT_KEYWORDS if kw in text)
+                medium_impact_matches = sum(1 for kw in MEDIUM_IMPACT_KEYWORDS if kw in text)
+                smart_matches = sum(1 for kw in SMART_NEWS_KEYWORDS if kw in text)
+                
+                # Determine impact level
+                if high_impact_matches >= 1:
+                    article['impact'] = 'HIGH'
+                    impact_score = 3
+                elif medium_impact_matches >= 1 or smart_matches >= 2:
+                    article['impact'] = 'MEDIUM'
+                    impact_score = 2
+                else:
+                    article['impact'] = 'LOW'
+                    impact_score = 1
+                
+                # Determine category based on project type + impact
+                is_smart = smart_matches >= 1
+                
+                if is_smart:
+                    article['category'] = 'smart_news'
+                elif any(kw in text for kw in ['metro', 'line extension', 'new stations', 'aqua line', 'rapid rail', 'rrts', 'namo bharat']):
                     article['category'] = 'metro_projects'
                 elif any(kw in text for kw in ['highway', 'expressway', 'corridor', 'eastern peripheral', 'western peripheral']):
                     article['category'] = 'highways'
@@ -1086,8 +1139,6 @@ Would you like me to proceed with this change?"""
                     article['category'] = 'government_updates'
                 elif any(kw in text for kw in ['bridge', 'tunnel', 'flyover', 'underpass']):
                     article['category'] = 'civil_infrastructure'
-                elif any(kw in text for kw in ['smart city', 'urban development', 'city infrastructure']):
-                    article['category'] = 'smart_cities'
                 else:
                     article['category'] = 'infrastructure'
                 
@@ -1105,7 +1156,7 @@ Would you like me to proceed with this change?"""
     
     def _format_news_message(self, articles: List[Dict[str, Any]]) -> str:
         """
-        Format news articles for Telegram - INFRASTRUCTURE FOCUS
+        Format news articles for Telegram - IMPACT LEVEL CATEGORIZATION
         
         Args:
             articles: List of news articles
@@ -1119,8 +1170,16 @@ Would you like me to proceed with this change?"""
         date_str = now.strftime('%B %d, %Y')
         time_str = now.strftime('%I:%M %p')
         
-        # Category emoji mapping for infrastructure news
+        # Impact level emojis
+        impact_emojis = {
+            'HIGH': '🔴 HIGH IMPACT',
+            'MEDIUM': '🟡 MEDIUM IMPACT', 
+            'LOW': '🟢 LOW IMPACT'
+        }
+        
+        # Category emoji mapping
         category_emojis = {
+            'smart_news': '🤖 SMART NEWS',
             'metro_projects': '🚇 METRO PROJECTS',
             'highways': '🛣️ HIGHWAYS & EXPRESSWAYS',
             'airports': '✈️ AIRPORTS',
@@ -1131,10 +1190,17 @@ Would you like me to proceed with this change?"""
             'general': '📰 GENERAL'
         }
         
+        # Count articles by impact
+        high_count = sum(1 for a in articles if a.get('impact') == 'HIGH')
+        medium_count = sum(1 for a in articles if a.get('impact') == 'MEDIUM')
+        low_count = sum(1 for a in articles if a.get('impact') == 'LOW')
+        smart_count = sum(1 for a in articles if a.get('category') == 'smart_news')
+        
         lines = [
-            f"<b>🚇 Latest Infrastructure & Metro News</b>",
+            f"<b>🚇 Infrastructure News - Impact Analysis</b>",
             f"📅 {date_str} | ⏰ {time_str}",
-            f"📊 {len(articles)} articles",
+            f"📊 {len(articles)} articles | 🤖 {smart_count} Smart",
+            f"🔴 {high_count} High | 🟡 {medium_count} Medium | 🟢 {low_count} Low",
             "",
             "━━━━━━━━━━━━━━━━━━━━"
         ]
@@ -1144,40 +1210,59 @@ Would you like me to proceed with this change?"""
             lines.append("No new infrastructure articles found at the moment.")
             lines.append("Try again in a few minutes!")
         else:
-            # Group by category
-            categories = {}
-            for article in articles[:20]:  # Max 20 articles
-                cat = article.get('category', 'general')
-                if cat not in categories:
-                    categories[cat] = []
-                categories[cat].append(article)
+            # Group by IMPACT LEVEL first (High -> Medium -> Low)
+            impact_order = ['HIGH', 'MEDIUM', 'LOW']
             
-            # Sort categories by priority
-            priority_order = ['metro_projects', 'highways', 'airports', 'government_updates', 
-                             'civil_infrastructure', 'smart_cities', 'infrastructure', 'general']
-            sorted_categories = sorted(categories.items(), 
-                                      key=lambda x: priority_order.index(x[0]) if x[0] in priority_order else 999)
-            
-            for category, cat_articles in sorted_categories:
-                lines.append("")
-                # Use emoji mapping or default formatting
-                cat_display = category_emojis.get(category, f"📁 {category.upper().replace('_', ' ')}")
-                lines.append(f"<b>{cat_display}</b>")
+            for impact in impact_order:
+                impact_articles = [a for a in articles if a.get('impact') == impact]
                 
-                for article in cat_articles[:4]:  # Max 4 per category
-                    title = html.escape(article.get('title', 'No title')[:80])
-                    url = html.escape(article.get('url', ''), quote=True)
-                    source = article.get('source', 'Unknown').replace('Google News - ', '')
+                if not impact_articles:
+                    continue
+                
+                # Add impact level header
+                lines.append("")
+                lines.append(f"<b>{impact_emojis.get(impact, impact)}</b>")
+                lines.append("")
+                
+                # Within each impact level, group by category
+                categories = {}
+                for article in impact_articles:
+                    cat = article.get('category', 'general')
+                    if cat not in categories:
+                        categories[cat] = []
+                    categories[cat].append(article)
+                
+                # Category priority order
+                category_priority = ['smart_news', 'metro_projects', 'highways', 'airports', 
+                                    'government_updates', 'civil_infrastructure', 'smart_cities', 
+                                    'infrastructure', 'general']
+                
+                sorted_categories = sorted(categories.items(), 
+                                          key=lambda x: category_priority.index(x[0]) if x[0] in category_priority else 999)
+                
+                for category, cat_articles in sorted_categories:
+                    # Category sub-header with emoji
+                    cat_display = category_emojis.get(category, f"📁 {category.upper().replace('_', ' ')}")
+                    lines.append(f"  <i>{cat_display}</i>")
                     
-                    lines.append(f"")
-                    if url:
-                        lines.append(f"• <a href='{url}'>{title}</a>")
-                    else:
-                        lines.append(f"• {title}")
+                    for article in cat_articles[:3]:  # Max 3 per category within impact level
+                        title = html.escape(article.get('title', 'No title')[:75])
+                        url = html.escape(article.get('url', ''), quote=True)
+                        source = article.get('source', 'Unknown').replace('Google News - ', '')
+                        
+                        # Add smart indicator if it's smart news
+                        smart_indicator = "🤖 " if article.get('category') == 'smart_news' else "• "
+                        
+                        if url:
+                            lines.append(f"    {smart_indicator}<a href='{url}'>{title}</a>")
+                        else:
+                            lines.append(f"    {smart_indicator}{title}")
+                        
+                        # Show source only if it's informative
+                        if source and not source.startswith('http'):
+                            lines.append(f"      <i>{html.escape(source)}</i>")
                     
-                    # Show source only if it's informative
-                    if source and not source.startswith('http'):
-                        lines.append(f"  <i>{html.escape(source)}</i>")
+                    lines.append("")  # Empty line between categories
         
         lines.append("")
         lines.append("━━━━━━━━━━━━━━━━━━━━")
@@ -1203,7 +1288,15 @@ Would you like me to proceed with this change?"""
         date_str = now.strftime('%B %d, %Y')
         time_str = now.strftime('%I:%M %p')
         
+        # Impact colors for email
+        impact_colors = {
+            'HIGH': '#e74c3c',    # Red
+            'MEDIUM': '#f39c12',  # Orange
+            'LOW': '#27ae60'      # Green
+        }
+        
         category_emojis = {
+            'smart_news': '🤖 SMART NEWS',
             'metro_projects': '🚇 METRO PROJECTS',
             'highways': '🛣️ HIGHWAYS & EXPRESSWAYS',
             'airports': '✈️ AIRPORTS',
@@ -1214,6 +1307,12 @@ Would you like me to proceed with this change?"""
             'general': '📰 GENERAL'
         }
         
+        # Count by impact
+        high_count = sum(1 for a in articles if a.get('impact') == 'HIGH')
+        medium_count = sum(1 for a in articles if a.get('impact') == 'MEDIUM')
+        low_count = sum(1 for a in articles if a.get('impact') == 'LOW')
+        smart_count = sum(1 for a in articles if a.get('category') == 'smart_news')
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -1223,12 +1322,25 @@ Would you like me to proceed with this change?"""
                 .container {{ background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
                 h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }}
                 .meta {{ color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }}
-                .category {{ background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 10px 20px; margin: 25px 0 15px 0; border-radius: 5px; font-weight: bold; font-size: 16px; }}
-                .article {{ background: #f9f9f9; padding: 20px; margin: 15px 0; border-left: 4px solid #3498db; border-radius: 0 5px 5px 0; }}
-                .article h3 {{ margin: 0 0 10px 0; color: #2c3e50; font-size: 16px; }}
-                .article .source {{ color: #7f8c8d; font-size: 12px; margin-top: 10px; }}
+                .impact-header {{ padding: 15px 20px; margin: 25px 0 15px 0; border-radius: 5px; font-weight: bold; font-size: 18px; color: white; }}
+                .impact-high {{ background: linear-gradient(135deg, #e74c3c, #c0392b); }}
+                .impact-medium {{ background: linear-gradient(135deg, #f39c12, #d68910); }}
+                .impact-low {{ background: linear-gradient(135deg, #27ae60, #229954); }}
+                .category {{ background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 8px 15px; margin: 15px 0 10px 0; border-radius: 5px; font-weight: bold; font-size: 14px; }}
+                .article {{ background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #3498db; border-radius: 0 5px 5px 0; }}
+                .article-high {{ border-left-color: #e74c3c; }}
+                .article-medium {{ border-left-color: #f39c12; }}
+                .article-low {{ border-left-color: #27ae60; }}
+                .article h3 {{ margin: 0 0 8px 0; color: #2c3e50; font-size: 15px; }}
+                .article .source {{ color: #7f8c8d; font-size: 12px; margin-top: 8px; }}
+                .article .impact-badge {{ display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; color: white; margin-left: 10px; }}
+                .badge-high {{ background: #e74c3c; }}
+                .badge-medium {{ background: #f39c12; }}
+                .badge-low {{ background: #27ae60; }}
+                .smart-badge {{ background: #9b59b6; }}
                 .article a {{ color: #3498db; text-decoration: none; }}
                 .article a:hover {{ text-decoration: underline; }}
+                .stats {{ background: #ecf0f1; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
                 .footer {{ text-align: center; color: #95a5a6; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }}
                 .empty {{ text-align: center; padding: 40px; color: #95a5a6; }}
                 .header-icon {{ font-size: 40px; margin-bottom: 10px; }}
@@ -1237,43 +1349,74 @@ Would you like me to proceed with this change?"""
         <body>
             <div class="container">
                 <div class="header-icon">🚇</div>
-                <h1>On-Demand Infrastructure News</h1>
+                <h1>Infrastructure News - Impact Analysis</h1>
                 <div class="meta">
                     📅 {date_str} | ⏰ {time_str}<br>
-                    📊 {len(articles)} articles<br>
                     👤 Requested by: {html.escape(requested_by)}
+                </div>
+                <div class="stats">
+                    <b>📊 Summary:</b> {len(articles)} articles | 
+                    <span style="color:#e74c3c">🔴 {high_count} High</span> | 
+                    <span style="color:#f39c12">🟡 {medium_count} Medium</span> | 
+                    <span style="color:#27ae60">🟢 {low_count} Low</span> | 
+                    <span style="color:#9b59b6">🤖 {smart_count} Smart</span>
                 </div>
         """
         
         if not articles:
             html_content += '<div class="empty"><p>No new infrastructure articles found at the moment.</p><p>Try again in a few minutes!</p></div>'
         else:
-            # Group by category
-            categories = {}
-            for article in articles[:20]:
-                cat = article.get('category', 'general')
-                if cat not in categories:
-                    categories[cat] = []
-                categories[cat].append(article)
+            # Group by IMPACT LEVEL first
+            impact_order = [('HIGH', 'impact-high'), ('MEDIUM', 'impact-medium'), ('LOW', 'impact-low')]
             
-            # Sort categories by priority
-            priority_order = ['metro_projects', 'highways', 'airports', 'government_updates', 
-                             'civil_infrastructure', 'smart_cities', 'infrastructure', 'general']
-            sorted_categories = sorted(categories.items(), 
-                                      key=lambda x: priority_order.index(x[0]) if x[0] in priority_order else 999)
-            
-            for category, cat_articles in sorted_categories:
-                cat_display = category_emojis.get(category, category.upper().replace('_', ' '))
-                html_content += f'<div class="category">{cat_display}</div>'
+            for impact, css_class in impact_order:
+                impact_articles = [a for a in articles if a.get('impact') == impact]
                 
-                for article in cat_articles[:4]:
+                if not impact_articles:
+                    continue
+                
+                # Impact level header
+                impact_label = f"🔴 {impact} IMPACT" if impact == 'HIGH' else f"🟡 {impact} IMPACT" if impact == 'MEDIUM' else f"🟢 {impact} IMPACT"
+                html_content += f'<div class="impact-header {css_class}">{impact_label}</div>'
+                
+                # Group by category within impact level
+                categories = {}
+                for article in impact_articles:
+                    cat = article.get('category', 'general')
+                    if cat not in categories:
+                        categories[cat] = []
+                    categories[cat].append(article)
+                
+                category_priority = ['smart_news', 'metro_projects', 'highways', 'airports', 
+                                    'government_updates', 'civil_infrastructure', 'smart_cities', 
+                                    'infrastructure', 'general']
+                sorted_categories = sorted(categories.items(), 
+                                          key=lambda x: category_priority.index(x[0]) if x[0] in category_priority else 999)
+                
+                for category, cat_articles in sorted_categories:
+                    cat_display = category_emojis.get(category, category.upper().replace('_', ' '))
+                    html_content += f'<div class="category">{cat_display}</div>'
+                
+                for article in cat_articles[:3]:
                     title = html.escape(article.get('title', 'No title'))
                     url = article.get('url', '')
                     source = html.escape(article.get('source', 'Unknown'))
+                    article_impact = article.get('impact', 'LOW')
+                    is_smart = article.get('category') == 'smart_news'
+                    
+                    # Impact badge
+                    badge_class = f"badge-{article_impact.lower()}"
+                    badge_text = article_impact
+                    
+                    # Smart badge
+                    smart_badge = '<span class="impact-badge smart-badge">🤖 SMART</span>' if is_smart else ''
+                    
+                    # Article border color based on impact
+                    article_class = f"article article-{article_impact.lower()}"
                     
                     html_content += f'''
-                    <div class="article">
-                        <h3>{f'<a href="{url}">{title}</a>' if url else title}</h3>
+                    <div class="{article_class}">
+                        <h3>{f'<a href="{url}">{title}</a>' if url else title}<span class="impact-badge {badge_class}">{badge_text}</span>{smart_badge}</h3>
                         <div class="source">📰 {source}</div>
                     </div>
                     '''
