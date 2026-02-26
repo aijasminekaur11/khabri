@@ -51,14 +51,14 @@ Deliver the right infrastructure and real estate news at the right time — so t
 - **Domain:** Indian infrastructure (metro, highways, airports, smart cities) + real estate regulatory (RERA, PMAY) + celebrity property transactions
 - **Existing assets:** Comprehensive keyword library pre-configured, RSS feed list curated, AI prompt templates designed
 - **Delivery channels:** Telegram (primary, interactive) + Gmail SMTP (secondary, formatted HTML)
-- **Infrastructure:** GitHub Actions for scheduling, Vercel for Telegram webhook, Gmail SMTP for email
+- **Infrastructure:** GitHub Actions for scheduling/processing, Railway for persistent Telegram bot (polling mode), Gmail SMTP for email
 - **AI strategy:** Claude (Sonnet) primary for analysis, Gemini as fallback. Batch processing for cost optimization (~$1-4/month)
 
 ## Constraints
 
-- **Cost:** $0 infrastructure, <$5/month AI API calls — all free tiers (GitHub Actions, Vercel, GNews.io)
+- **Cost:** Railway $5/month free credit for bot, $0 GitHub Actions, <$5/month AI API calls — all free tiers
 - **API Limits:** GNews.io 100 requests/day, Gmail SMTP rate limits
-- **Tech Stack:** Python (GitHub Actions), Vercel serverless (Telegram webhook)
+- **Tech Stack:** Python 3.12 (GitHub Actions + Railway), persistent Telegram bot on Railway (polling mode)
 - **Timezone:** All user-facing times in IST, GitHub Actions cron in UTC
 - **Scale:** Two users, single bot instance — no multi-tenancy needed
 
@@ -71,6 +71,8 @@ Deliver the right infrastructure and real estate news at the right time — so t
 | Claude primary, Gemini fallback | Better analysis quality, fallback for reliability | — Pending |
 | Python over Node for core | Better RSS/scraping ecosystem, GitHub Actions native | — Pending |
 | Single bot, two users | Simple architecture, shared preferences sufficient | — Pending |
+| Railway over Vercel for bot | Persistent process = no cold starts, polling mode simpler than webhooks | — Pending |
+| GitHub Actions for scheduling | Free 2000 mins/month, reliable cron, handles heavy processing | — Pending |
 
 ---
 *Last updated: 2026-02-26 after initialization*
