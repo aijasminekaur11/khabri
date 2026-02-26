@@ -105,49 +105,49 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FETCH-01 | — | Pending |
-| FETCH-02 | — | Pending |
-| FETCH-03 | — | Pending |
-| FETCH-04 | — | Pending |
-| FETCH-05 | — | Pending |
-| FETCH-06 | — | Pending |
-| AI-01 | — | Pending |
-| AI-02 | — | Pending |
-| AI-03 | — | Pending |
-| AI-04 | — | Pending |
-| AI-05 | — | Pending |
-| AI-06 | — | Pending |
-| AI-07 | — | Pending |
-| DLVR-01 | — | Pending |
-| DLVR-02 | — | Pending |
-| DLVR-03 | — | Pending |
-| DLVR-04 | — | Pending |
-| DLVR-05 | — | Pending |
-| DLVR-06 | — | Pending |
-| DLVR-07 | — | Pending |
-| BOT-01 | — | Pending |
-| BOT-02 | — | Pending |
-| BOT-03 | — | Pending |
-| BOT-04 | — | Pending |
-| BOT-05 | — | Pending |
-| BOT-06 | — | Pending |
-| BOT-07 | — | Pending |
-| BOT-08 | — | Pending |
-| BOT-09 | — | Pending |
-| BOT-10 | — | Pending |
-| BOT-11 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| INFRA-06 | — | Pending |
+| FETCH-01 | Phase 3 | Pending |
+| FETCH-02 | Phase 3 | Pending |
+| FETCH-03 | Phase 4 | Pending |
+| FETCH-04 | Phase 4 | Pending |
+| FETCH-05 | Phase 4 | Pending |
+| FETCH-06 | Phase 3 | Pending |
+| AI-01 | Phase 5 | Pending |
+| AI-02 | Phase 5 | Pending |
+| AI-03 | Phase 4 | Pending |
+| AI-04 | Phase 4 | Pending |
+| AI-05 | Phase 5 | Pending |
+| AI-06 | Phase 5 | Pending |
+| AI-07 | Phase 5 | Pending |
+| DLVR-01 | Phase 6 | Pending |
+| DLVR-02 | Phase 6 | Pending |
+| DLVR-03 | Phase 7 | Pending |
+| DLVR-04 | Phase 6 | Pending |
+| DLVR-05 | Phase 11 | Pending |
+| DLVR-06 | Phase 7 | Pending |
+| DLVR-07 | Phase 7 | Pending |
+| BOT-01 | Phase 8 | Pending |
+| BOT-02 | Phase 8 | Pending |
+| BOT-03 | Phase 10 | Pending |
+| BOT-04 | Phase 9 | Pending |
+| BOT-05 | Phase 9 | Pending |
+| BOT-06 | Phase 9 | Pending |
+| BOT-07 | Phase 10 | Pending |
+| BOT-08 | Phase 10 | Pending |
+| BOT-09 | Phase 10 | Pending |
+| BOT-10 | Phase 10 | Pending |
+| BOT-11 | Phase 8 | Pending |
+| INFRA-01 | Phase 2 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 2 | Pending |
+| INFRA-04 | Phase 8 | Pending |
+| INFRA-05 | Phase 2 | Pending |
+| INFRA-06 | Phase 11 | Pending |
 
 **Coverage:**
 - v1 requirements: 37 total
-- Mapped to phases: 0
-- Unmapped: 37 ⚠️
+- Mapped to phases: 37
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-26*
-*Last updated: 2026-02-26 after initial definition*
+*Last updated: 2026-02-26 after roadmap creation*
